@@ -1,0 +1,6 @@
+{
+  "name": "Transit Wheel",
+  "description": "High-precision Astro Transit Wheel bi-wheel chart using Swiss Ephemeris. Computes transits, natal positions, systems of houses, and aspects with an interactive 1900-2050 timeline scrubber.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
