@@ -4,12 +4,12 @@ import com.example.model.HouseSystem
 import java.time.Instant
 
 data class BirthData(
-    val name: String = "",
-    val birthInstant: Instant = Instant.ofEpochMilli(474724800000L), // Fallback e.g. Mar 15 1985 12:00
-    val latitude: Double = 0.0,         // decimal degrees, N+ S-
-    val longitude: Double = 0.0,        // decimal degrees, E+ W-
-    val locationName: String = "",
-    val hasLocation: Boolean = false,
+    val name: String = "Grace Hopper",
+    val birthInstant: Instant = Instant.ofEpochMilli(812462400000L), // Oct 1, 1995 12:00 UTC
+    val latitude: Double = 40.7128,          // decimal degrees, N+ S- (New York)
+    val longitude: Double = -74.0060,        // decimal degrees, E+ W-
+    val locationName: String = "New York City, NY",
+    val hasLocation: Boolean = true,
     val houseSystem: HouseSystem = HouseSystem.PLACIDUS,
-    val isSet: Boolean = false           // false = no birth data entered yet
+    val isSet: Boolean = true                // Always active and gorgeous on first launch
 )

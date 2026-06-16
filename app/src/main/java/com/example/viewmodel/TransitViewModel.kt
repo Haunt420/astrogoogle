@@ -91,19 +91,6 @@ class TransitViewModel(application: Application) : AndroidViewModel(application)
     .distinctUntilChanged()
     .flatMapLatest { trigger ->
         flow {
-            emit(
-                TransitUiState(
-                    chartState = ChartState.Empty,
-                    transitInstant = trigger.instant,
-                    selectedGranularity = trigger.granularity,
-                    orbTolerance = trigger.orb,
-                    showMinorAspects = trigger.minor,
-                    isCalculating = true,
-                    isPlaying = trigger.playing,
-                    birthData = trigger.birthData
-                )
-            )
-            
             val chart = withContext(Dispatchers.Default) {
                 calculator.calculateChart(
                     birthData = trigger.birthData,

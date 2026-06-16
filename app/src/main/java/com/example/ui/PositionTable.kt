@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.BodyPosition
 import com.example.model.ChartRing
+import com.example.model.BodyCategory
 
 @Composable
 fun PositionTable(
@@ -57,8 +58,9 @@ fun PositionTable(
                 text = {
                     Text(
                         "TRANSIT POSITIONS",
-                        fontSize = 12.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
                         color = if (selectedRingTab == ChartRing.TRANSIT) Color(0xFF4DD0E1) else Color.White.copy(alpha = 0.5f)
                     )
                 }
@@ -69,8 +71,9 @@ fun PositionTable(
                 text = {
                     Text(
                         "NATAL POSITIONS",
-                        fontSize = 12.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
                         color = if (selectedRingTab == ChartRing.NATAL) Color(0xFFFFB300) else Color.White.copy(alpha = 0.5f)
                     )
                 }
@@ -102,23 +105,26 @@ fun PositionTable(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "Body",
-                    fontSize = 11.sp,
+                    "Body".uppercase(),
+                    fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
                     color = Color.White.copy(alpha = 0.4f),
                     modifier = Modifier.width(130.dp)
                 )
                 Text(
-                    "Tropical Longitude",
-                    fontSize = 11.sp,
+                    "Tropical Longitude".uppercase(),
+                    fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
                     color = Color.White.copy(alpha = 0.4f),
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    "Speed",
-                    fontSize = 11.sp,
+                    "Speed".uppercase(),
+                    fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
                     color = Color.White.copy(alpha = 0.4f),
                     modifier = Modifier.width(60.dp)
                 )
@@ -165,27 +171,36 @@ fun PositionTable(
                             modifier = Modifier.weight(1f)
                         )
 
-                        // Speed + Retrograde Retrograde icon
+                        // Speed + Retrograde icon
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.End,
                             modifier = Modifier.width(60.dp)
                         ) {
-                            if (p.isRetrograde) {
+                            if (p.body.category == BodyCategory.ANGLE) {
                                 Text(
-                                    "℞",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFFEF5350),
-                                    modifier = Modifier.padding(end = 4.dp)
+                                    text = "—",
+                                    fontSize = 12.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = Color.White.copy(alpha = 0.3f)
+                                )
+                            } else {
+                                if (p.isRetrograde) {
+                                    Text(
+                                        "℞",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFEF5350),
+                                        modifier = Modifier.padding(end = 4.dp)
+                                    )
+                                }
+                                Text(
+                                    text = String.format("%.2f", p.speedDegreesPerDay),
+                                    fontSize = 11.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = if (p.speedDegreesPerDay < 0) Color(0xFFEF5350) else Color.White.copy(alpha = 0.5f)
                                 )
                             }
-                            Text(
-                                text = String.format("%.2f", p.speedDegreesPerDay),
-                                fontSize = 11.sp,
-                                fontFamily = FontFamily.Monospace,
-                                color = if (p.speedDegreesPerDay < 0) Color(0xFFEF5350) else Color.White.copy(alpha = 0.5f)
-                            )
                         }
                     }
                 }
