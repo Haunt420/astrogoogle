@@ -101,31 +101,31 @@ fun PositionTable(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 6.dp, horizontal = 4.dp),
+                    .padding(vertical = 8.dp, horizontal = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     "Body".uppercase(),
-                    fontSize = 10.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
-                    color = Color.White.copy(alpha = 0.4f),
-                    modifier = Modifier.width(130.dp)
+                    letterSpacing = 1.1.sp,
+                    color = Color.White.copy(alpha = 0.5f),
+                    modifier = Modifier.width(140.dp)
                 )
                 Text(
                     "Tropical Longitude".uppercase(),
-                    fontSize = 10.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
-                    color = Color.White.copy(alpha = 0.4f),
+                    letterSpacing = 1.1.sp,
+                    color = Color.White.copy(alpha = 0.5f),
                     modifier = Modifier.weight(1f)
                 )
                 Text(
                     "Speed".uppercase(),
-                    fontSize = 10.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
-                    color = Color.White.copy(alpha = 0.4f),
+                    letterSpacing = 1.1.sp,
+                    color = Color.White.copy(alpha = 0.5f),
                     modifier = Modifier.width(60.dp)
                 )
             }
@@ -139,24 +139,24 @@ fun PositionTable(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 10.dp, horizontal = 4.dp),
+                            .padding(vertical = 12.dp, horizontal = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // Body Name & Glyph
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.width(130.dp)
+                            modifier = Modifier.width(140.dp)
                         ) {
                             Text(
                                 text = p.body.glyph,
-                                fontSize = 16.sp,
+                                fontSize = 18.sp,
                                 color = if (selectedRingTab == ChartRing.TRANSIT) Color(0xFF4DD0E1) else Color(0xFFFFB300),
-                                modifier = Modifier.width(28.dp)
+                                modifier = Modifier.width(32.dp)
                             )
                             Text(
                                 text = p.body.displayName,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
                                 color = Color.White
                             )
                         }
@@ -164,10 +164,10 @@ fun PositionTable(
                         // Coordinates
                         Text(
                             text = p.formattedDegree,
-                            fontSize = 13.sp,
+                            fontSize = 14.sp,
                             fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Medium,
-                            color = Color.White.copy(alpha = 0.9f),
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White.copy(alpha = 0.95f),
                             modifier = Modifier.weight(1f)
                         )
 

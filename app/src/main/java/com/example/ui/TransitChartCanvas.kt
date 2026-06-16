@@ -8,6 +8,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.drawscope.Fill
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -168,14 +171,41 @@ fun TransitChartCanvas(
             )
         }
 
-        // Draw central dynamic hub to hold current datetime/source info
+        // Draw central dynamic hub with beautiful golden geometric cosmic rays/star
         drawCircle(
-            color = Color(0xFF141224),
+            color = Color(0xFF070414),
             radius = outerRadius * 0.28f,
             center = center
         )
+        
+        // Golden geometric center starrays
         drawCircle(
-            color = Color.White.copy(alpha = 0.12f),
+            color = Color(0xFFFFB300).copy(alpha = 0.4f),
+            radius = 2.dp.toPx(),
+            center = center
+        )
+        for (angle in 0 until 360 step 30) {
+            val rad = Math.toRadians(angle.toDouble())
+            val startR = outerRadius * 0.03f
+            val endR = outerRadius * 0.22f
+            // Accent major directional rays
+            val isMajorRay = angle % 90 == 0
+            drawLine(
+                color = if (isMajorRay) Color(0xFFFFB300).copy(alpha = 0.25f) else Color(0xFFFFB300).copy(alpha = 0.12f),
+                start = Offset((center.x + startR * cos(rad)).toFloat(), (center.y + startR * sin(rad)).toFloat()),
+                end = Offset((center.x + endR * cos(rad)).toFloat(), (center.y + endR * sin(rad)).toFloat()),
+                strokeWidth = if (isMajorRay) 1.5f.dp.toPx() else 0.8f.dp.toPx()
+            )
+        }
+
+        drawCircle(
+            color = Color(0xFFFFB300).copy(alpha = 0.18f),
+            radius = outerRadius * 0.24f,
+            center = center,
+            style = Stroke(width = 0.8f.dp.toPx())
+        )
+        drawCircle(
+            color = Color.White.copy(alpha = 0.15f),
             radius = outerRadius * 0.28f,
             center = center,
             style = Stroke(width = 1.dp.toPx())
@@ -238,7 +268,7 @@ fun TransitChartCanvas(
                 )
             }
 
-            drawGlyph(center, glyphOffset, p.body.glyph, Color(0xFFFFB300), textMeasurer)
+            drawGlyph(center, glyphOffset, p.body, Color(0xFFFFB300), textMeasurer)
         }
 
         // Draw Transit glyphs
@@ -255,7 +285,7 @@ fun TransitChartCanvas(
                 )
             }
 
-            drawGlyph(center, glyphOffset, p.body.glyph, Color(0xFF4DD0E1), textMeasurer)
+            drawGlyph(center, glyphOffset, p.body, Color(0xFF4DD0E1), textMeasurer)
         }
     }
 }
@@ -280,28 +310,401 @@ private fun DrawScope.drawStarfield(center: Offset, outerRadius: Float) {
 private fun DrawScope.drawGlyph(
     center: Offset,
     offset: Offset,
-    text: String,
+    body: ChartBody,
     color: Color,
     textMeasurer: TextMeasurer
 ) {
-    // Draw small background blur backing for the glyph
+    val radiusPx = 14.dp.toPx()
+    val strokeWidthPx = 1.8f.dp.toPx()
+
+    // Draw the glow backing circle
     drawCircle(
-        color = Color(0xFF110E1D),
-        radius = 12.dp.toPx(),
+        color = Color(0xFF0C0A14),
+        radius = radiusPx,
         center = offset
     )
 
-    val layoutResult = textMeasurer.measure(
-        text = text,
-        style = TextStyle(fontSize = 15.sp, color = color)
+    // Draw a subtle border around the icon to make it stand out beautifully like a physical medal / token
+    drawCircle(
+        color = color.copy(alpha = 0.35f),
+        radius = radiusPx,
+        center = offset,
+        style = Stroke(width = 0.8f.dp.toPx())
     )
-    val textWidth = layoutResult.size.width
-    val textHeight = layoutResult.size.height
 
-    drawText(
-        textLayoutResult = layoutResult,
-        topLeft = Offset(offset.x - textWidth / 2f, offset.y - textHeight / 2f)
-    )
+    // Now, let's draw programmatic celestial icons for the major bodies to avoid "goofy fonts"
+    when (body) {
+        ChartBody.SUN -> {
+            // Draw Sun symbol: Center dot and outer concentric circle
+            drawCircle(
+                color = color,
+                radius = 5.dp.toPx(),
+                center = offset,
+                style = Stroke(width = strokeWidthPx)
+            )
+            drawCircle(
+                color = color,
+                radius = 1.5f.dp.toPx(),
+                center = offset
+            )
+        }
+        ChartBody.MOON -> {
+            // Draw Luna crescent moon
+            val r = 5.5f.dp.toPx()
+            val moonPath = Path().apply {
+                addArc(
+                    Rect(offset.x - r, offset.y - r, offset.x + r, offset.y + r),
+                    -90f,
+                    180f
+                )
+                cubicTo(
+                    offset.x + r * 0.1f, offset.y + r,
+                    offset.x - r * 0.2f, offset.y + r * 0.5f,
+                    offset.x - r * 0.2f, offset.y
+                )
+                cubicTo(
+                    offset.x - r * 0.2f, offset.y - r * 0.5f,
+                    offset.x + r * 0.1f, offset.y - r,
+                    offset.x, offset.y - r
+                )
+                close()
+            }
+            drawPath(moonPath, color, style = Fill)
+        }
+        ChartBody.MERCURY -> {
+            // Mercury: Horns arc + circle + cross
+            val cy = offset.y + 0.5f.dp.toPx()
+            val r = 3.2f.dp.toPx()
+            // Circle
+            drawCircle(
+                color = color,
+                radius = r,
+                center = Offset(offset.x, cy),
+                style = Stroke(width = strokeWidthPx)
+            )
+            // Cross below
+            drawLine(
+                color = color,
+                start = Offset(offset.x, cy + r),
+                end = Offset(offset.x, cy + r + 4.dp.toPx()),
+                strokeWidth = strokeWidthPx
+            )
+            drawLine(
+                color = color,
+                start = Offset(offset.x - 2.5f.dp.toPx(), cy + r + 2.dp.toPx()),
+                end = Offset(offset.x + 2.5f.dp.toPx(), cy + r + 2.dp.toPx()),
+                strokeWidth = strokeWidthPx
+            )
+            // Horns on top
+            drawArc(
+                color = color,
+                startAngle = 180f,
+                sweepAngle = 180f,
+                useCenter = false,
+                topLeft = Offset(offset.x - r, cy - r - 3.dp.toPx()),
+                size = Size(r * 2f, 3.5f.dp.toPx()),
+                style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
+            )
+        }
+        ChartBody.VENUS -> {
+            // Venus: Circle with cross below
+            val cy = offset.y - 1.5f.dp.toPx()
+            val r = 3.8f.dp.toPx()
+            drawCircle(
+                color = color,
+                radius = r,
+                center = Offset(offset.x, cy),
+                style = Stroke(width = strokeWidthPx)
+            )
+            // Cross below
+            drawLine(
+                color = color,
+                start = Offset(offset.x, cy + r),
+                end = Offset(offset.x, cy + r + 5.dp.toPx()),
+                strokeWidth = strokeWidthPx
+            )
+            drawLine(
+                color = color,
+                start = Offset(offset.x - 3.dp.toPx(), cy + r + 2.2f.dp.toPx()),
+                end = Offset(offset.x + 3.dp.toPx(), cy + r + 2.2f.dp.toPx()),
+                strokeWidth = strokeWidthPx
+            )
+        }
+        ChartBody.MARS -> {
+            // Mars: Circle with up-right arrow
+            val cx = offset.x - 1.5f.dp.toPx()
+            val cy = offset.y + 1.5f.dp.toPx()
+            val r = 3.8f.dp.toPx()
+            drawCircle(
+                color = color,
+                radius = r,
+                center = Offset(cx, cy),
+                style = Stroke(width = strokeWidthPx)
+            )
+            // Diagonal arrow line
+            val startOffset = Offset(cx + r * 0.7f, cy - r * 0.7f)
+            val endOffset = Offset(offset.x + 6.dp.toPx(), offset.y - 6.dp.toPx())
+            drawLine(
+                color = color,
+                start = startOffset,
+                end = endOffset,
+                strokeWidth = strokeWidthPx,
+                cap = StrokeCap.Round
+            )
+            // Arrow head
+            drawLine(
+                color = color,
+                start = endOffset,
+                end = Offset(endOffset.x - 3.5f.dp.toPx(), endOffset.y),
+                strokeWidth = strokeWidthPx,
+                cap = StrokeCap.Round
+            )
+            drawLine(
+                color = color,
+                start = endOffset,
+                end = Offset(endOffset.x, endOffset.y + 3.5f.dp.toPx()),
+                strokeWidth = strokeWidthPx,
+                cap = StrokeCap.Round
+            )
+        }
+        ChartBody.JUPITER -> {
+            // Jupiter: Stylized curved '4' symbol drawing
+            val jupiterPath = Path().apply {
+                val cx = offset.x - 1.dp.toPx()
+                val cy = offset.y - 1.dp.toPx()
+                // Left curve crescent
+                moveTo(cx - 3.5f.dp.toPx(), cy - 2.5f.dp.toPx())
+                quadraticTo(cx - 5.dp.toPx(), cy + 1.dp.toPx(), cx - 1.5f.dp.toPx(), cy + 3.5f.dp.toPx())
+                // Horizontal bar
+                lineTo(cx + 4.dp.toPx(), cy + 3.5f.dp.toPx())
+                // Vertical bar
+                moveTo(cx + 1.5f.dp.toPx(), cy - 4.5f.dp.toPx())
+                lineTo(cx + 1.5f.dp.toPx(), cy + 6.dp.toPx())
+                // Hook at bottom
+                quadraticTo(cx + 1.5f.dp.toPx(), cy + 7.5f.dp.toPx(), cx, cy + 7.5f.dp.toPx())
+            }
+            drawPath(jupiterPath, color, style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        }
+        ChartBody.SATURN -> {
+            // Saturn: Stylized sweeping sickle cross
+            val saturnPath = Path().apply {
+                val cx = offset.x
+                val cy = offset.y - 1.dp.toPx()
+                // Vertical/cross pillar
+                moveTo(cx - 1.dp.toPx(), cy - 5.1f.dp.toPx())
+                lineTo(cx - 1.dp.toPx(), cy + 1.9f.dp.toPx())
+                // Crossbar
+                moveTo(cx - 3.5f.dp.toPx(), cy - 3.dp.toPx())
+                lineTo(cx + 1.5f.dp.toPx(), cy - 3.dp.toPx())
+                // Wave sweeping curve below
+                moveTo(cx - 1.dp.toPx(), cy + 1.5f.dp.toPx())
+                cubicTo(
+                    cx + 3.5f.dp.toPx(), cy + 1.5f.dp.toPx(),
+                    cx + 3.5f.dp.toPx(), cy + 6.1f.dp.toPx(),
+                    cx - 0.5f.dp.toPx(), cy + 6.1f.dp.toPx()
+                )
+                quadraticTo(cx - 3.5f.dp.toPx(), cy + 6.1f.dp.toPx(), cx - 3.5f.dp.toPx(), cy + 3.5f.dp.toPx())
+            }
+            drawPath(saturnPath, color, style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        }
+        ChartBody.URANUS -> {
+            // Uranus: Circle, dot at center, with arrow pointing vertically on top
+            val cy = offset.y + 1.5f.dp.toPx()
+            val r = 3.2f.dp.toPx()
+            drawCircle(
+                color = color,
+                radius = r,
+                center = Offset(offset.x, cy),
+                style = Stroke(width = strokeWidthPx)
+            )
+            drawCircle(
+                color = color,
+                radius = 1.dp.toPx(),
+                center = Offset(offset.x, cy)
+            )
+            // Arrow pointing straight up from circle top
+            drawLine(
+                color = color,
+                start = Offset(offset.x, cy - r),
+                end = Offset(offset.x, cy - r - 4.5f.dp.toPx()),
+                strokeWidth = strokeWidthPx,
+                cap = StrokeCap.Round
+            )
+            // Arrow head
+            drawLine(
+                color = color,
+                start = Offset(offset.x, cy - r - 4.5f.dp.toPx()),
+                end = Offset(offset.x - 2.5f.dp.toPx(), cy - r - 2.5f.dp.toPx()),
+                strokeWidth = strokeWidthPx,
+                cap = StrokeCap.Round
+            )
+            drawLine(
+                color = color,
+                start = Offset(offset.x, cy - r - 4.5f.dp.toPx()),
+                end = Offset(offset.x + 2.5f.dp.toPx(), cy - r - 2.5f.dp.toPx()),
+                strokeWidth = strokeWidthPx,
+                cap = StrokeCap.Round
+            )
+        }
+        ChartBody.NEPTUNE -> {
+            // Neptune: Trident fork with cross below
+            val cy = offset.y - 1.5f.dp.toPx()
+            val r = 3.6f.dp.toPx()
+            // central pole
+            drawLine(
+                color = color,
+                start = Offset(offset.x, cy - 4.5f.dp.toPx()),
+                end = Offset(offset.x, cy + r + 4.5f.dp.toPx()),
+                strokeWidth = strokeWidthPx,
+                cap = StrokeCap.Round
+            )
+            // fork tines curvature
+            drawArc(
+                color = color,
+                startAngle = 0f,
+                sweepAngle = 180f,
+                useCenter = false,
+                topLeft = Offset(offset.x - r, cy - 2.5f.dp.toPx()),
+                size = Size(r * 2f, r * 2f),
+                style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
+            )
+            // crossbar below fork
+            drawLine(
+                color = color,
+                start = Offset(offset.x - 2.8f.dp.toPx(), cy + r + 2.5f.dp.toPx()),
+                end = Offset(offset.x + 2.8f.dp.toPx(), cy + r + 2.5f.dp.toPx()),
+                strokeWidth = strokeWidthPx,
+                cap = StrokeCap.Round
+            )
+        }
+        ChartBody.PLUTO -> {
+            // Pluto: Circle nestled inside crescent with cross below
+            val cy = offset.y - 2.dp.toPx()
+            val r = 2.5f.dp.toPx()
+            // Cross below
+            drawLine(
+                color = color,
+                start = Offset(offset.x, cy + r + r),
+                end = Offset(offset.x, cy + r + r + 6.dp.toPx()),
+                strokeWidth = strokeWidthPx,
+                cap = StrokeCap.Round
+            )
+            drawLine(
+                color = color,
+                start = Offset(offset.x - 2.5f.dp.toPx(), cy + r + r + 3.dp.toPx()),
+                end = Offset(offset.x + 2.5f.dp.toPx(), cy + r + r + 3.dp.toPx()),
+                strokeWidth = strokeWidthPx,
+                cap = StrokeCap.Round
+            )
+            // Crescent
+            drawArc(
+                color = color,
+                startAngle = 0f,
+                sweepAngle = 180f,
+                useCenter = false,
+                topLeft = Offset(offset.x - 4.dp.toPx(), cy - 1.dp.toPx()),
+                size = Size(8.dp.toPx(), 6.dp.toPx()),
+                style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
+            )
+            // Circle on top
+            drawCircle(
+                color = color,
+                radius = r,
+                center = Offset(offset.x, cy - 1.5f.dp.toPx()),
+                style = Stroke(width = strokeWidthPx)
+            )
+        }
+        ChartBody.NORTH_NODE -> {
+            // North Node: loops
+            val nnPath = Path().apply {
+                val cx = offset.x
+                val cy = offset.y
+                moveTo(cx - 3.5f.dp.toPx(), cy + 2.dp.toPx())
+                cubicTo(
+                    cx - 5.dp.toPx(), cy - 3.dp.toPx(),
+                    cx - 1.dp.toPx(), cy - 3.dp.toPx(),
+                    cx, cy + 1.dp.toPx()
+                )
+                cubicTo(
+                    cx + 1.dp.toPx(), cy - 3.dp.toPx(),
+                    cx + 5.dp.toPx(), cy - 3.dp.toPx(),
+                    cx + 3.5f.dp.toPx(), cy + 2.dp.toPx()
+                )
+                // draw loops
+                addOval(Rect(cx - 5.dp.toPx(), cy + 1.dp.toPx(), cx - 1.dp.toPx(), cy + 5.dp.toPx()))
+                addOval(Rect(cx + 1.dp.toPx(), cy + 1.dp.toPx(), cx + 5.dp.toPx(), cy + 5.dp.toPx()))
+            }
+            drawPath(nnPath, color, style = Stroke(width = strokeWidthPx))
+        }
+        ChartBody.SOUTH_NODE -> {
+            // South Node: inverted loops
+            val snPath = Path().apply {
+                val cx = offset.x
+                val cy = offset.y
+                moveTo(cx - 3.5f.dp.toPx(), cy - 2.dp.toPx())
+                cubicTo(
+                    cx - 5.dp.toPx(), cy + 3.dp.toPx(),
+                    cx - 1.dp.toPx(), cy + 3.dp.toPx(),
+                    cx, cy - 1.dp.toPx()
+                )
+                cubicTo(
+                    cx + 1.dp.toPx(), cy + 3.dp.toPx(),
+                    cx + 5.dp.toPx(), cy + 3.dp.toPx(),
+                    cx + 3.5f.dp.toPx(), cy - 2.dp.toPx()
+                )
+                addOval(Rect(cx - 5.dp.toPx(), cy - 5.dp.toPx(), cx - 1.dp.toPx(), cy - 1.dp.toPx()))
+                addOval(Rect(cx + 1.dp.toPx(), cy - 5.dp.toPx(), cx + 5.dp.toPx(), cy - 1.dp.toPx()))
+            }
+            drawPath(snPath, color, style = Stroke(width = strokeWidthPx))
+        }
+        ChartBody.CHIRON -> {
+            // Chiron: Circle, vertical line up, and diagonal 'K' bars on right
+            val cy = offset.y + 2.dp.toPx()
+            val r = 2.8f.dp.toPx()
+            drawCircle(
+                color = color,
+                radius = r,
+                center = Offset(offset.x, cy),
+                style = Stroke(width = strokeWidthPx)
+            )
+            // Vertical pole
+            drawLine(
+                color = color,
+                start = Offset(offset.x, cy - r),
+                end = Offset(offset.x, cy - r - 7.dp.toPx()),
+                strokeWidth = strokeWidthPx,
+                cap = StrokeCap.Round
+            )
+            // 'K' arms
+            drawLine(
+                color = color,
+                start = Offset(offset.x, cy - r - 3.5f.dp.toPx()),
+                end = Offset(offset.x + 3.5f.dp.toPx(), cy - r - 7.dp.toPx()),
+                strokeWidth = strokeWidthPx,
+                cap = StrokeCap.Round
+            )
+            drawLine(
+                color = color,
+                start = Offset(offset.x, cy - r - 3.5f.dp.toPx()),
+                end = Offset(offset.x + 3.5f.dp.toPx(), cy - r),
+                strokeWidth = strokeWidthPx,
+                cap = StrokeCap.Round
+            )
+        }
+        else -> {
+            // Fallback for minor asteroids or angular points: Draw their beautiful unicode symbol inside
+            val textLayout = textMeasurer.measure(
+                text = body.glyph,
+                style = TextStyle(fontSize = 12.sp, color = color, fontWeight = FontWeight.Bold)
+            )
+            val w = textLayout.size.width
+            val h = textLayout.size.height
+            drawText(
+                textLayoutResult = textLayout,
+                topLeft = Offset(offset.x - w / 2f, offset.y - h / 2f)
+            )
+        }
+    }
 }
 
 private fun DrawScope.drawZodiacRing(
@@ -367,7 +770,11 @@ private fun DrawScope.drawZodiacRing(
 
         val textLayout = textMeasurer.measure(
             text = sign.glyph,
-            style = TextStyle(fontSize = 13.sp, color = sign.color.copy(alpha = 0.85f))
+            style = TextStyle(
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = sign.color
+            )
         )
         drawText(
             textLayoutResult = textLayout,

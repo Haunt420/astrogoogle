@@ -117,7 +117,7 @@ fun AspectLedger(
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            modifier = Modifier.width(170.dp)
+                            modifier = Modifier.weight(1.3f)
                         ) {
                             // Transit Body (Green-Blue)
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -159,14 +159,15 @@ fun AspectLedger(
                             Column {
                                 Text(
                                     text = aspect.type.title,
-                                    fontSize = 11.sp,
+                                    fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White.copy(alpha = 0.9f)
                                 )
                                 Text(
-                                    text = "${aspect.transitPosition.body.shortCode} - ${aspect.natalPosition.body.shortCode}",
-                                    fontSize = 9.sp,
-                                    color = Color.White.copy(alpha = 0.4f)
+                                    text = "${aspect.transitPosition.body.displayName} - ${aspect.natalPosition.body.displayName}",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color.White.copy(alpha = 0.5f)
                                 )
                             }
                         }
@@ -174,12 +175,14 @@ fun AspectLedger(
                         // Orb progress and values
                         Column(
                             horizontalAlignment = Alignment.End,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(0.7f)
                         ) {
-                            val orbDeg = aspect.orb.toInt()
-                            val orbMin = ((aspect.orb - orbDeg) * 60.0).toInt()
+                            val totalMinutes = Math.round(aspect.orb * 60.0).toInt()
+                            val orbDeg = totalMinutes / 60
+                            val orbMin = totalMinutes % 60
+                            val exactSuffix = if (totalMinutes <= 2) " exact" else ""
                             Text(
-                                text = "${orbDeg}°${orbMin.toString().padStart(2, '0')}' exact",
+                                text = "${orbDeg}°${orbMin.toString().padStart(2, '0')}$exactSuffix",
                                 fontSize = 12.sp,
                                 fontFamily = FontFamily.Monospace,
                                 fontWeight = FontWeight.Bold,

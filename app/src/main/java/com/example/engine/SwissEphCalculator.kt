@@ -286,8 +286,8 @@ class SwissEphCalculator(private val ephePath: String) : ChartCalculator {
 private fun Double.normalizedDegrees(): Double = ((this % 360.0) + 360.0) % 360.0
 
 private fun angularSeparation(a: Double, b: Double): Double {
-    val diff = abs((b.normalizedDegrees() - a.normalizedDegrees() + 180.0) % 360.0 - 180.0)
-    return diff.coerceAtMost(180.0)
+    val diff = abs(a.normalizedDegrees() - b.normalizedDegrees()) % 360.0
+    return if (diff > 180.0) 360.0 - diff else diff
 }
 
 /**
