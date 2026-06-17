@@ -3,6 +3,7 @@ package com.example.ui
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -153,7 +154,7 @@ fun TransitScreen(
                             )
                         }
 
-                        // System of Houses dropdown (if birth location set)
+                        // System of Houses selector (if birth location set)
                         if (state.birthData.isSet && state.birthData.hasLocation) {
                             Column {
                                 Text(
@@ -163,8 +164,10 @@ fun TransitScreen(
                                     modifier = Modifier.padding(bottom = 6.dp)
                                 )
                                 Row(
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    modifier = Modifier.fillMaxWidth()
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState())
                                 ) {
                                     HouseSystem.entries.forEach { h ->
                                         val active = h == state.birthData.houseSystem
@@ -173,12 +176,12 @@ fun TransitScreen(
                                             label = {
                                                 Text(
                                                     h.displayName,
-                                                    fontSize = 10.sp,
+                                                    fontSize = 11.sp,
                                                     fontWeight = if (active) FontWeight.Bold else FontWeight.Normal
                                                 )
                                             },
                                             colors = SuggestionChipDefaults.suggestionChipColors(
-                                                containerColor = if (active) Color(0xFFFFB300) else Color(0x0AFFFFFF),
+                                                containerColor = if (active) Color(0xFFFFB300) else Color(0x15FFFFFF),
                                                 labelColor = if (active) Color(0xFF0F0C1B) else Color.White
                                             ),
                                             border = null

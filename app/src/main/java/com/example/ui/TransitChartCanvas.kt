@@ -161,92 +161,129 @@ fun TransitChartCanvas(
         // Draw decorative starfield
         drawStarfield(center, outerRadius)
 
-        // Draw Zodiac signs segments - radiusFraction: 0.88f to 1.00f
-        val zodiacRingInner = 0.86f
+        // Draw Zodiac signs segments - Ring 1: outer fraction 1.00f, inner fraction 0.80f
+        val zodiacRingInner = 0.80f
         val zodiacRingOuter = 1.00f
         drawZodiacRing(center, outerRadius, zodiacRingInner, zodiacRingOuter, rotationLong, textMeasurer)
 
-        // Draw house cusps if valid
-        if (state.natalHouses.isValid) {
-            val cusps = state.natalHouses.cusps
-            val rOuterHouses = outerRadius * 0.86f
-
-            // 1) Draw filled background sectors with subtle alternating shades
-            for (i in 1..12) {
-                val cuspLong = cusps[i]
-                val nextCuspLong = cusps[if (i == 12) 1 else i + 1]
-
-                val screenStartAngle = longToScreenAngle(cuspLong)
-                val diff = (nextCuspLong - cuspLong + 360.0) % 360.0
-                val sweepAngle = -diff // sweep counter-clockwise
-
-                val opacity = if (i % 2 == 0) 0.05f else 0.02f
-                drawArc(
-                    color = Color(0xFF4DD0E1).copy(alpha = opacity),
-                    startAngle = screenStartAngle.toFloat(),
-                    sweepAngle = sweepAngle.toFloat(),
-                    useCenter = true,
-                    topLeft = Offset(center.x - rOuterHouses, center.y - rOuterHouses),
-                    size = Size(rOuterHouses * 2f, rOuterHouses * 2f)
-                )
-            }
-
-            // Mask the center hollow hub inside the house sectors (from radius fraction 0f to 0.30f)
-            val rInnerHouses = outerRadius * 0.30f
-            drawCircle(
-                color = Color(0xFF0F0C1B), // Matches chart background
-                radius = rInnerHouses,
-                center = center,
-                style = Fill
-            )
-
-            // 2) Draw extended spokes lines and labels
-            for (i in 1..12) {
-                val cuspLong = cusps[i]
-                val cuspOffsetInner = longToOffset(cuspLong, 0.30f)
-                val cuspOffsetOuter = longToOffset(cuspLong, 0.86f) // Extended to zodiac inner boundary
-                
-                // Draw line
-                drawLine(
-                    color = Color.White.copy(alpha = if (i == 1 || i == 10) 0.45f else 0.12f),
-                    start = cuspOffsetInner,
-                    end = cuspOffsetOuter,
-                    strokeWidth = if (i == 1 || i == 10) 1.8f.dp.toPx() else 0.8f.dp.toPx()
-                )
-
-                // Draw house labels
-                val midCuspLong = if (i < 12) {
-                    val nextCusp = cusps[i + 1]
-                    val diff = (nextCusp - cuspLong + 360.0) % 360.0
-                    (cuspLong + diff / 2.0) % 360.0
-                } else {
-                    val nextCusp = cusps[1]
-                    val diff = (nextCusp - cuspLong + 360.0) % 360.0
-                    (cuspLong + diff / 2.0) % 360.0
-                }
-
-                val houseLabelOffset = longToOffset(midCuspLong, 0.36f)
-                val labelLayout = textMeasurer.measure(
-                    text = i.toString(),
-                    style = TextStyle(fontSize = 11.sp, color = Color.White.copy(alpha = 0.4f), fontWeight = FontWeight.Bold)
-                )
-                drawText(
-                    textLayoutResult = labelLayout,
-                    topLeft = Offset(
-                        houseLabelOffset.x - labelLayout.size.width / 2f,
-                        houseLabelOffset.y - labelLayout.size.height / 2f
-                    )
-                )
-            }
+        // Setup house division cusps (use Equal House fallback if not set to ensure there is ALWAYS a gorgeous structural representation)
+        val cusps = if (state.natalHouses.isValid) {
+            state.natalHouses.cusps
+        } else {
+            DoubleArray(13) { idx -> ((idx - 1) * 30.0 % 360.0) }
         }
 
-        // Draw aspect web lines (transit ring: 0.72f, natal ring: 0.48f)
+        val rInnerHouses = outerRadius * 0.40f
+        val rOuterHouses = outerRadius * 0.80f
+
+        // Draw filled background sectors of houses with subtle alternating shades
+        for (i in 1..12) {
+            val cuspLong = cusps[i]
+            val nextCuspLong = cusps[if (i == 12) 1 else i + 1]
+
+            val screenStartAngle = longToScreenAngle(cuspLong)
+            val diff = (nextCuspLong - cuspLong + 360.0) % 360.0
+            val sweepAngle = -diff // sweep counter-clockwise
+
+            val opacity = if (i % 2 == 0) 0.05f else 0.02f
+            drawArc(
+                color = Color(0xFF4DD0E1).copy(alpha = opacity),
+                startAngle = screenStartAngle.toFloat(),
+                sweepAngle = sweepAngle.toFloat(),
+                useCenter = true,
+                topLeft = Offset(center.x - rOuterHouses, center.y - rOuterHouses),
+                size = Size(rOuterHouses * 2f, rOuterHouses * 2f)
+            )
+        }
+
+        // Mask the central hollow void space inside Ring 3 (from radius fraction 0f to 0.40f)
+        drawCircle(
+            color = Color(0xFF0F0C1B), // Matches chart background
+            radius = rInnerHouses,
+            center = center,
+            style = Fill
+        )
+
+        // Draw concentric circular outline boundaries
+        drawCircle(
+            color = Color.White.copy(alpha = 0.20f),
+            radius = outerRadius * 0.80f,
+            center = center,
+            style = Stroke(width = 1.dp.toPx())
+        )
+        drawCircle(
+            color = Color.White.copy(alpha = 0.20f),
+            radius = outerRadius * 0.60f,
+            center = center,
+            style = Stroke(width = 1.dp.toPx())
+        )
+        drawCircle(
+            color = Color.White.copy(alpha = 0.20f),
+            radius = outerRadius * 0.40f,
+            center = center,
+            style = Stroke(width = 1.2f.dp.toPx())
+        )
+
+        // Draw house dividers (spokes) extending from 0.40f (inner Ring 3) to 0.80f (outer Ring 2)
+        for (i in 1..12) {
+            val cuspLong = cusps[i]
+            val cuspOffsetInner = longToOffset(cuspLong, 0.40f)
+            val cuspOffsetOuter = longToOffset(cuspLong, 0.80f)
+
+            drawLine(
+                color = Color.White.copy(alpha = if (i == 1 || i == 10) 0.5f else 0.15f),
+                start = cuspOffsetInner,
+                end = cuspOffsetOuter,
+                strokeWidth = if (i == 1 || i == 10) 2.2f.dp.toPx() else 0.9f.dp.toPx()
+            )
+
+            // Draw House labels in middle/low parts of sectors
+            val midCuspLong = if (i < 12) {
+                val nextCusp = cusps[i + 1]
+                val diff = (nextCusp - cuspLong + 360.0) % 360.0
+                (cuspLong + diff / 2.0) % 360.0
+            } else {
+                val nextCusp = cusps[1]
+                val diff = (nextCusp - cuspLong + 360.0) % 360.0
+                (cuspLong + diff / 2.0) % 360.0
+            }
+
+            // Ring 2 label (Transit ring, center radius fraction 0.64f)
+            val labelOffsetR2 = longToOffset(midCuspLong, 0.64f)
+            val labelLayoutR2 = textMeasurer.measure(
+                text = i.toString(),
+                style = TextStyle(fontSize = 10.sp, color = Color.White.copy(alpha = 0.3f), fontWeight = FontWeight.Black)
+            )
+            drawText(
+                textLayoutResult = labelLayoutR2,
+                topLeft = Offset(
+                    labelOffsetR2.x - labelLayoutR2.size.width / 2f,
+                    labelOffsetR2.y - labelLayoutR2.size.height / 2f
+                )
+            )
+
+            // Ring 3 label (Natal ring, center radius fraction 0.44f)
+            val labelOffsetR3 = longToOffset(midCuspLong, 0.44f)
+            val labelLayoutR3 = textMeasurer.measure(
+                text = i.toString(),
+                style = TextStyle(fontSize = 10.sp, color = Color.White.copy(alpha = 0.3f), fontWeight = FontWeight.Black)
+            )
+            drawText(
+                textLayoutResult = labelLayoutR3,
+                topLeft = Offset(
+                    labelOffsetR3.x - labelLayoutR3.size.width / 2f,
+                    labelOffsetR3.y - labelLayoutR3.size.height / 2f
+                )
+            )
+        }
+
+        // Draw aspect web lines (terminating exactly at the inner boundary of Ring 3: 0.40f)
         for (aspect in state.aspects) {
             val nLong = aspect.natalPosition.eclipticLongitude
             val tLong = aspect.transitPosition.eclipticLongitude
 
-            val startOffset = longToOffset(nLong, 0.48f)
-            val endOffset = longToOffset(tLong, 0.72f)
+            val startOffset = longToOffset(nLong, 0.40f)
+            val endOffset = longToOffset(tLong, 0.40f)
 
             // Select color based on aspect type
             val color = when (aspect.type) {
@@ -267,117 +304,131 @@ fun TransitChartCanvas(
             )
         }
 
-        // Draw central dynamic hub with beautiful golden geometric cosmic rays/star
+        // Draw central beautiful organic Earth globe in the center empty space
+        val globeRadius = outerRadius * 0.18f
+
+        // Deep backing shadow
         drawCircle(
-            color = Color(0xFF070414),
-            radius = outerRadius * 0.28f,
-            center = center
+            color = Color(0xFF03010B),
+            radius = globeRadius,
+            center = center,
+            style = Fill
         )
-        
-        // Golden geometric center starrays
+
+        // Globe base ocean (Gradient from deep indigo to rich blue at edges)
+        val globeBrush = Brush.radialGradient(
+            colors = listOf(Color(0xFF0D1B2A), Color(0xFF1B4965)),
+            center = center,
+            radius = globeRadius
+        )
         drawCircle(
-            color = Color(0xFFFFB300).copy(alpha = 0.4f),
-            radius = 2.dp.toPx(),
-            center = center
+            brush = globeBrush,
+            radius = globeRadius,
+            center = center,
+            style = Fill
         )
-        for (angle in 0 until 360 step 30) {
-            val rad = Math.toRadians(angle.toDouble())
-            val startR = outerRadius * 0.03f
-            val endR = outerRadius * 0.22f
-            // Accent major directional rays
-            val isMajorRay = angle % 90 == 0
-            drawLine(
-                color = if (isMajorRay) Color(0xFFFFB300).copy(alpha = 0.25f) else Color(0xFFFFB300).copy(alpha = 0.12f),
-                start = Offset((center.x + startR * cos(rad)).toFloat(), (center.y + startR * sin(rad)).toFloat()),
-                end = Offset((center.x + endR * cos(rad)).toFloat(), (center.y + endR * sin(rad)).toFloat()),
-                strokeWidth = if (isMajorRay) 1.5f.dp.toPx() else 0.8f.dp.toPx()
-            )
+
+        // Stylized continent organic shapes representing land mass in standard AstroFuture style
+        val continentsColor = Color(0xFF708090).copy(alpha = 0.5f) // Silver / Slate grey landmass
+        val continent1 = Path().apply {
+            moveTo(center.x - globeRadius * 0.5f, center.y - globeRadius * 0.3f)
+            quadraticTo(center.x - globeRadius * 0.2f, center.y - globeRadius * 0.6f, center.x + globeRadius * 0.1f, center.y - globeRadius * 0.4f)
+            quadraticTo(center.x + globeRadius * 0.4f, center.y - globeRadius * 0.5f, center.x + globeRadius * 0.5f, center.y - globeRadius * 0.1f)
+            quadraticTo(center.x + globeRadius * 0.2f, center.y + globeRadius * 0.2f, center.x + globeRadius * 0.3f, center.y + globeRadius * 0.5f)
+            quadraticTo(center.x, center.y + globeRadius * 0.6f, center.x - globeRadius * 0.3f, center.y + globeRadius * 0.2f)
+            quadraticTo(center.x - globeRadius * 0.6f, center.y + globeRadius * 0.1f, center.x - globeRadius * 0.5f, center.y - globeRadius * 0.3f)
+            close()
         }
-
-        drawCircle(
-            color = Color(0xFFFFB300).copy(alpha = 0.18f),
-            radius = outerRadius * 0.24f,
-            center = center,
-            style = Stroke(width = 0.8f.dp.toPx())
-        )
-        drawCircle(
-            color = Color.White.copy(alpha = 0.15f),
-            radius = outerRadius * 0.28f,
-            center = center,
-            style = Stroke(width = 1.dp.toPx())
+        drawPath(
+            path = continent1,
+            color = continentsColor,
+            style = Fill
         )
 
-        // Draw sensitive Angular Nodes (ASC, MC, IC, DC) if valid
+        val continent2 = Path().apply {
+            moveTo(center.x - globeRadius * 0.7f, center.y + globeRadius * 0.1f)
+            quadraticTo(center.x - globeRadius * 0.4f, center.y + globeRadius * 0.3f, center.x - globeRadius * 0.5f, center.y + globeRadius * 0.6f)
+            quadraticTo(center.x - globeRadius * 0.8f, center.y + globeRadius * 0.5f, center.x - globeRadius * 0.7f, center.y + globeRadius * 0.1f)
+            close()
+        }
+        drawPath(
+            path = continent2,
+            color = continentsColor,
+            style = Fill
+        )
+
+        // Atmosphere glow ring
+        drawCircle(
+            color = Color(0xFF4DD0E1).copy(alpha = 0.35f),
+            radius = globeRadius,
+            center = center,
+            style = Stroke(width = 2.dp.toPx())
+        )
+
+        // Draw sensitive Angular Nodes "AC" and "MC" in Ring 3 if natal houses are valid
         if (state.natalHouses.isValid) {
-            val angles = listOf(
-                Pair("ASC", state.natalHouses.ascendant),
-                Pair("MC", state.natalHouses.mc),
-                Pair("IC", state.natalHouses.ic),
-                Pair("DSC", state.natalHouses.descendant)
+            val ascLong = state.natalHouses.ascendant
+            val mcLong = state.natalHouses.mc
+
+            // AC label in Ring 3 (Inner, near cusp line)
+            val acOffset = longToOffset(ascLong, 0.46f)
+            val acLayout = textMeasurer.measure(
+                text = "AC",
+                style = TextStyle(fontSize = 11.sp, color = Color(0xFF4DD0E1), fontWeight = FontWeight.Bold)
+            )
+            drawText(
+                textLayoutResult = acLayout,
+                topLeft = Offset(acOffset.x - acLayout.size.width / 2f, acOffset.y + 4.dp.toPx())
             )
 
-            for ((label, lValue) in angles) {
-                val markInner = longToOffset(lValue, 0.83f)
-                val markOuter = longToOffset(lValue, 0.87f)
-                val angleLabelOffset = longToOffset(lValue, 0.78f)
-
-                drawLine(
-                    color = Color(0xFFE8D0FF),
-                    start = markInner,
-                    end = markOuter,
-                    strokeWidth = 2.dp.toPx()
-                )
-
-                val labelLayout = textMeasurer.measure(
-                    text = label,
-                    style = TextStyle(fontSize = 11.sp, color = Color(0xFFE8D0FF))
-                )
-                drawText(
-                    textLayoutResult = labelLayout,
-                    topLeft = Offset(
-                        angleLabelOffset.x - labelLayout.size.width / 2f,
-                        angleLabelOffset.y - labelLayout.size.height / 2f
-                    )
-                )
-            }
+            // MC label in Ring 3 (Inner, near cusp line)
+            val mcOffset = longToOffset(mcLong, 0.46f)
+            val mcLayout = textMeasurer.measure(
+                text = "MC",
+                style = TextStyle(fontSize = 11.sp, color = Color(0xFFFFB300), fontWeight = FontWeight.Bold)
+            )
+            drawText(
+                textLayoutResult = mcLayout,
+                topLeft = Offset(mcOffset.x + 4.dp.toPx(), mcOffset.y - mcLayout.size.height / 2f)
+            )
         }
 
-        // Layout standard positions on rings (Natal: 0.48f, Transit: 0.72f)
+        // Layout standard positions on rings (Natal: Ring 3 [0.40f - 0.60f], Transit: Ring 2 [0.60f - 0.80f])
         val filteredNatal = state.natalPositions.filter { it.body.sweId >= 0 || it.body == ChartBody.SOUTH_NODE }
         val filteredTransit = state.transitPositions.filter { it.body.sweId >= 0 || it.body == ChartBody.SOUTH_NODE }
 
         val natalPlacements = fanningLayout(filteredNatal)
         val transitPlacements = fanningLayout(filteredTransit)
 
-        // Draw Natal glyphs
+        // Draw Natal glyphs (Ring 3, centered at 0.50f fraction)
         for (p in natalPlacements) {
-            val glyphOffset = longToOffset(p.finalLongitude, 0.48f + p.radialOffset * 0.05f)
+            val glyphOffset = longToOffset(p.finalLongitude, 0.50f + p.radialOffset * 0.035f)
 
-            // Draw tiny line pointing from adjusted position back to exact ecliptic long coordinate
+            // Draw line connecting back to exact coordinate on inner boundary
             if (abs(p.finalLongitude - p.eclipticLongitude) > 0.1) {
-                val exactOffset = longToOffset(p.eclipticLongitude, 0.48f)
+                val exactOffset = longToOffset(p.eclipticLongitude, 0.60f)
                 drawLine(
-                    color = Color.White.copy(alpha = 0.15f),
+                    color = Color(0xFFFFB300).copy(alpha = 0.25f),
                     start = exactOffset,
                     end = glyphOffset,
-                    strokeWidth = 1.dp.toPx()
+                    strokeWidth = 0.8f.dp.toPx()
                 )
             }
 
             drawGlyph(center, glyphOffset, p.body, Color(0xFFFFB300), textMeasurer)
         }
 
-        // Draw Transit glyphs
+        // Draw Transit glyphs (Ring 2, centered at 0.70f fraction)
         for (p in transitPlacements) {
-            val glyphOffset = longToOffset(p.finalLongitude, 0.72f + p.radialOffset * 0.05f)
+            val glyphOffset = longToOffset(p.finalLongitude, 0.70f + p.radialOffset * 0.035f)
 
             if (abs(p.finalLongitude - p.eclipticLongitude) > 0.1) {
-                val exactOffset = longToOffset(p.eclipticLongitude, 0.72f)
+                val exactOffset = longToOffset(p.eclipticLongitude, 0.80f)
                 drawLine(
-                    color = Color.White.copy(alpha = 0.15f),
+                    color = Color(0xFF4DD0E1).copy(alpha = 0.25f),
                     start = exactOffset,
                     end = glyphOffset,
-                    strokeWidth = 1.dp.toPx()
+                    strokeWidth = 0.8f.dp.toPx()
                 )
             }
 
@@ -444,7 +495,7 @@ private fun DrawScope.drawGlyph(
     center: Offset,
     offset: Offset,
     body: ChartBody,
-    color: Color,
+    rimColor: Color,
     textMeasurer: TextMeasurer
 ) {
     val radiusPx = 14.dp.toPx()
@@ -459,11 +510,33 @@ private fun DrawScope.drawGlyph(
 
     // Draw a subtle border around the icon to make it stand out beautifully like a physical medal / token
     drawCircle(
-        color = color.copy(alpha = 0.35f),
+        color = rimColor.copy(alpha = 0.45f),
         radius = radiusPx,
         center = offset,
-        style = Stroke(width = 0.8f.dp.toPx())
+        style = Stroke(width = 1.dp.toPx())
     )
+
+    val color = when (body) {
+        ChartBody.SUN -> Color(0xFFFFA000)      // Yellow/Orange glowing sphere
+        ChartBody.MOON -> Color(0xFFE0E0E0)     // Silver crescent sphere
+        ChartBody.MERCURY -> Color(0xFF90A4AE)  // Grey/Navy/Light-blue-grey circle with Mercury symbol
+        ChartBody.VENUS -> Color(0xFFF06292)    // Magenta/Pink with Venus symbol
+        ChartBody.MARS -> Color(0xFFE57373)     // Red with Mars symbol
+        ChartBody.JUPITER -> Color(0xFFFFB74D)  // Gold/Olive sphere with symbol 4
+        ChartBody.SATURN -> Color(0xFFD7CCC8)   // Golden brown Saturn with rings
+        ChartBody.URANUS -> Color(0xFF4FD0E1)   // Light Blue with Uranus symbol
+        ChartBody.NEPTUNE -> Color(0xFF3F51B5)  // Dark Blue with Neptune symbol (trident)
+        ChartBody.PLUTO -> Color(0xFF9575CD)    // Purple with Pluto symbol
+        ChartBody.NORTH_NODE, ChartBody.SOUTH_NODE -> Color(0xFF03A9F4) // Blue swirls icon (Node)
+        ChartBody.CHIRON -> Color(0xFF5C6BC0)   // Sapphire blue key style
+        ChartBody.LILITH -> Color(0xFFB0BEC5)   // Silver moon + black cross icon (Lilith)
+        ChartBody.CERES -> Color(0xFFFF8A65)    // Red/coral outline crescent with cross
+        ChartBody.PALLAS -> Color(0xFF81C784)   // Green shield/spear
+        ChartBody.JUNO -> Color(0xFF4FC3F7)     // Light blue star with cross/sceptre
+        ChartBody.VESTA -> Color(0xFFAED581)    // Olive flame emblem
+        ChartBody.PHOLUS -> Color(0xFFBA68C8)   // Lavender round badge with P-cross style
+        else -> rimColor
+    }
 
     // Now, let's draw programmatic celestial icons for the major bodies to avoid "goofy fonts"
     when (body) {
