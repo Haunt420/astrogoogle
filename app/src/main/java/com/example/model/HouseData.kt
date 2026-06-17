@@ -43,6 +43,7 @@ data class HouseData(
 enum class HouseSystem(val displayName: String, val code: Char) {
     PLACIDUS("Placidus", 'P'),
     KOCH("Koch", 'K'),
+    PORPHYRY("Porphyry", 'O'),
     WHOLE_SIGN("Whole Sign", 'W'),
     EQUAL("Equal", 'E'),
     REGIOMONTANUS("Regiomontanus", 'R'),

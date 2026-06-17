@@ -39,13 +39,14 @@ fun PositionTable(
             .padding(14.dp)
     ) {
         // Tab Headers
+        val selectedTabIndex = if (selectedRingTab == ChartRing.TRANSIT) 0 else 1
         TabRow(
-            selectedTabIndex = selectedRingTab.ordinal,
+            selectedTabIndex = selectedTabIndex,
             containerColor = Color.Transparent,
             contentColor = Color.White,
             indicator = { tabPositions ->
                 TabRowDefaults.SecondaryIndicator(
-                    modifier = Modifier.tabIndicatorOffset(tabPositions[selectedRingTab.ordinal]),
+                    modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
                     color = if (selectedRingTab == ChartRing.TRANSIT) Color(0xFF4DD0E1) else Color(0xFFFFB300)
                 )
             },

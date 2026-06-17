@@ -47,7 +47,7 @@ class SwissEph {
                 SweConst.SE_MERCURY, SweConst.SE_VENUS, SweConst.SE_MARS,
                 SweConst.SE_JUPITER, SweConst.SE_SATURN, SweConst.SE_URANUS,
                 SweConst.SE_NEPTUNE, SweConst.SE_PLUTO,
-                SweConst.SE_CHIRON, SweConst.SE_CERES, SweConst.SE_PALLAS, SweConst.SE_JUNO, SweConst.SE_VESTA -> {
+                SweConst.SE_CHIRON, SweConst.SE_CERES, SweConst.SE_PALLAS, SweConst.SE_JUNO, SweConst.SE_VESTA, SweConst.SE_PHOLUS -> {
                     val elements = getElements(bodyId, T)
                     val earthElements = getElements(-99, T) // Earth's elements
 
@@ -190,6 +190,7 @@ class SwissEph {
             SweConst.SE_PALLAS -> PlanetElements(2.772, 0.231, 34.84, (185.3 + 130.1 * T).normalizedDegrees(), 310.2, 173.1, 0.211)
             SweConst.SE_JUNO -> PlanetElements(2.670, 0.258, 12.98, (347.1 + 137.7 * T).normalizedDegrees(), 248.1, 169.9, 0.226)
             SweConst.SE_VESTA -> PlanetElements(2.361, 0.089, 7.14, (258.1 + 162.1 * T).normalizedDegrees(), 251.1, 103.8, 0.271)
+            SweConst.SE_PHOLUS -> PlanetElements(20.3, 0.572, 24.6, (32.0 + 3.91 * T).normalizedDegrees(), 354.9, 119.4, 0.010)
             else -> PlanetElements(1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
         }
     }

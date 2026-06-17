@@ -18,6 +18,7 @@ object SweConst {
     const val SE_PALLAS = 18
     const val SE_JUNO = 19
     const val SE_VESTA = 20
+    const val SE_PHOLUS = 21
 
     const val SEFLG_SWIEPH = 2
     const val SEFLG_SPEED = 256

@@ -33,6 +33,7 @@ enum class ChartBody(
 
     // Asteroids & centaurs
     CHIRON("Chiron",             "⚷", "CHI",  SweConst.SE_CHIRON,    BodyCategory.ASTEROID),
+    PHOLUS("Pholus",             "⚹", "PHO",  SweConst.SE_PHOLUS,    BodyCategory.ASTEROID),
     CERES("Ceres",               "⚳", "CER",  SweConst.SE_CERES,     BodyCategory.ASTEROID),
     PALLAS("Pallas Athena",      "⚴", "PAL",  SweConst.SE_PALLAS,    BodyCategory.ASTEROID),
     JUNO("Juno",                 "⚵", "JUN",  SweConst.SE_JUNO,      BodyCategory.ASTEROID),

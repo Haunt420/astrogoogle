@@ -691,6 +691,191 @@ private fun DrawScope.drawGlyph(
                 cap = StrokeCap.Round
             )
         }
+        ChartBody.LILITH -> {
+            val cy = offset.y + 2.dp.toPx()
+            drawLine(
+                color = color,
+                start = Offset(offset.x, cy),
+                end = Offset(offset.x, cy + 6.dp.toPx()),
+                strokeWidth = strokeWidthPx,
+                cap = StrokeCap.Round
+            )
+            drawLine(
+                color = color,
+                start = Offset(offset.x - 3.dp.toPx(), cy + 2.2f.dp.toPx()),
+                end = Offset(offset.x + 3.dp.toPx(), cy + 2.2f.dp.toPx()),
+                strokeWidth = strokeWidthPx,
+                cap = StrokeCap.Round
+            )
+            val r = 3.6f.dp.toPx()
+            val moonPath = Path().apply {
+                addArc(
+                    Rect(offset.x - r - 1.dp.toPx(), cy - r - 4.dp.toPx(), offset.x + r - 1.dp.toPx(), cy + r - 4.dp.toPx()),
+                    -120f,
+                    240f
+                )
+                cubicTo(
+                    offset.x + r * 0.1f, cy - 4.dp.toPx() + r,
+                    offset.x - r * 0.2f, cy - 4.dp.toPx() + r * 0.5f,
+                    offset.x - r * 0.2f, cy - 4.dp.toPx()
+                )
+                cubicTo(
+                    offset.x - r * 0.2f, cy - 4.dp.toPx() - r * 0.5f,
+                    offset.x + r * 0.1f, cy - 4.dp.toPx() - r,
+                    offset.x, cy - 4.dp.toPx() - r
+                )
+                close()
+            }
+            drawPath(moonPath, color, style = Fill)
+            drawLine(
+                color = Color(0xFF0C0A14),
+                start = Offset(offset.x - 2.dp.toPx(), cy - 6.dp.toPx()),
+                end = Offset(offset.x + 1.dp.toPx(), cy - 2.dp.toPx()),
+                strokeWidth = 1.dp.toPx()
+            )
+        }
+        ChartBody.CERES -> {
+            val cy = offset.y + 1.dp.toPx()
+            val r = 3.6f.dp.toPx()
+            drawLine(
+                color = color,
+                start = Offset(offset.x, cy + 2.dp.toPx()),
+                end = Offset(offset.x, cy + 7.dp.toPx()),
+                strokeWidth = strokeWidthPx,
+                cap = StrokeCap.Round
+            )
+            drawLine(
+                color = color,
+                start = Offset(offset.x - 2.5f.dp.toPx(), cy + 4.5f.dp.toPx()),
+                end = Offset(offset.x + 2.5f.dp.toPx(), cy + 4.5f.dp.toPx()),
+                strokeWidth = strokeWidthPx,
+                cap = StrokeCap.Round
+            )
+            drawArc(
+                color = color,
+                startAngle = -90f,
+                sweepAngle = 180f,
+                useCenter = false,
+                topLeft = Offset(offset.x - r, cy - r - 2.dp.toPx()),
+                size = Size(r * 2f, r * 2f),
+                style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
+            )
+        }
+        ChartBody.PHOLUS -> {
+            val cx = offset.x
+            val cy = offset.y
+            drawLine(
+                color = color,
+                start = Offset(cx, cy - 6.dp.toPx()),
+                end = Offset(cx, cy + 5.dp.toPx()),
+                strokeWidth = strokeWidthPx,
+                cap = StrokeCap.Round
+            )
+            drawCircle(
+                color = color,
+                radius = 2.dp.toPx(),
+                center = Offset(cx, cy + 4.dp.toPx()),
+                style = Stroke(width = strokeWidthPx)
+            )
+            drawArc(
+                color = color,
+                startAngle = 90f,
+                sweepAngle = 180f,
+                useCenter = false,
+                topLeft = Offset(cx - 4.5f.dp.toPx(), cy - 5.dp.toPx()),
+                size = Size(4.dp.toPx(), 6.dp.toPx()),
+                style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
+            )
+            drawArc(
+                color = color,
+                startAngle = -90f,
+                sweepAngle = 180f,
+                useCenter = false,
+                topLeft = Offset(cx + 0.5f.dp.toPx(), cy - 5.dp.toPx()),
+                size = Size(4.dp.toPx(), 6.dp.toPx()),
+                style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
+            )
+        }
+        ChartBody.PALLAS -> {
+            val cx = offset.x
+            val cy = offset.y + 1.dp.toPx()
+            drawLine(
+                color = color,
+                start = Offset(cx, cy + 1.dp.toPx()),
+                end = Offset(cx, cy + 7.dp.toPx()),
+                strokeWidth = strokeWidthPx,
+                cap = StrokeCap.Round
+            )
+            drawLine(
+                color = color,
+                start = Offset(cx - 2.5f.dp.toPx(), cy + 4.0f.dp.toPx()),
+                end = Offset(cx + 2.5f.dp.toPx(), cy + 4.0f.dp.toPx()),
+                strokeWidth = strokeWidthPx,
+                cap = StrokeCap.Round
+            )
+            val spearPath = Path().apply {
+                moveTo(cx, cy - 6.dp.toPx())
+                lineTo(cx - 3.5f.dp.toPx(), cy + 1.dp.toPx())
+                lineTo(cx + 3.5f.dp.toPx(), cy + 1.dp.toPx())
+                close()
+            }
+            drawPath(spearPath, color, style = Stroke(width = strokeWidthPx, join = StrokeJoin.Miter))
+        }
+        ChartBody.JUNO -> {
+            val cx = offset.x
+            val cy = offset.y + 1.5f.dp.toPx()
+            drawLine(
+                color = color,
+                start = Offset(cx, cy - 1.dp.toPx()),
+                end = Offset(cx, cy + 6.dp.toPx()),
+                strokeWidth = strokeWidthPx,
+                cap = StrokeCap.Round
+            )
+            drawLine(
+                color = color,
+                start = Offset(cx - 3.dp.toPx(), cy + 2.5f.dp.toPx()),
+                end = Offset(cx + 3.dp.toPx(), cy + 2.5f.dp.toPx()),
+                strokeWidth = strokeWidthPx,
+                cap = StrokeCap.Round
+            )
+            val starY = cy - 4.dp.toPx()
+            drawLine(color = color, start = Offset(cx - 3.5f.dp.toPx(), starY), end = Offset(cx + 3.5f.dp.toPx(), starY), strokeWidth = strokeWidthPx, cap = StrokeCap.Round)
+            drawLine(color = color, start = Offset(cx, starY - 3.5f.dp.toPx()), end = Offset(cx, starY + 3.5f.dp.toPx()), strokeWidth = strokeWidthPx, cap = StrokeCap.Round)
+            drawLine(color = color, start = Offset(cx - 2.dp.toPx(), starY - 2.dp.toPx()), end = Offset(cx + 2.dp.toPx(), starY + 2.dp.toPx()), strokeWidth = 1.dp.toPx(), cap = StrokeCap.Round)
+            drawLine(color = color, start = Offset(cx - 2.dp.toPx(), starY + 2.dp.toPx()), end = Offset(cx + 2.dp.toPx(), starY - 2.dp.toPx()), strokeWidth = 1.dp.toPx(), cap = StrokeCap.Round)
+        }
+        ChartBody.VESTA -> {
+            val cx = offset.x
+            val cy = offset.y + 1f.dp.toPx()
+            drawLine(
+                color = color,
+                start = Offset(cx - 4.dp.toPx(), cy + 1.dp.toPx()),
+                end = Offset(cx + 4.dp.toPx(), cy + 1.dp.toPx()),
+                strokeWidth = strokeWidthPx,
+                cap = StrokeCap.Round
+            )
+            drawLine(
+                color = color,
+                start = Offset(cx, cy + 1.dp.toPx()),
+                end = Offset(cx, cy + 6.dp.toPx()),
+                strokeWidth = strokeWidthPx,
+                cap = StrokeCap.Round
+            )
+            drawLine(
+                color = color,
+                start = Offset(cx - 2.dp.toPx(), cy + 4.dp.toPx()),
+                end = Offset(cx + 2.dp.toPx(), cy + 4.dp.toPx()),
+                strokeWidth = strokeWidthPx,
+                cap = StrokeCap.Round
+            )
+            val flamePath = Path().apply {
+                moveTo(cx, cy - 6.dp.toPx())
+                cubicTo(cx - 3.dp.toPx(), cy - 3.dp.toPx(), cx - 2.dp.toPx(), cy + 1.dp.toPx(), cx, cy + 1.dp.toPx())
+                cubicTo(cx + 2.dp.toPx(), cy + 1.dp.toPx(), cx + 3.dp.toPx(), cy - 3.dp.toPx(), cx, cy - 6.dp.toPx())
+                close()
+            }
+            drawPath(flamePath, color, style = Stroke(width = strokeWidthPx))
+        }
         else -> {
             // Fallback for minor asteroids or angular points: Draw their beautiful unicode symbol inside
             val textLayout = textMeasurer.measure(

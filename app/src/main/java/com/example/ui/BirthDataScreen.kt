@@ -3,6 +3,7 @@ package com.example.ui
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -59,6 +60,17 @@ fun BirthDataScreen(
     var minuteText by remember(dateTimeVal) { mutableStateOf(dateTimeVal.minute.toString()) }
 
     var expandedHouseMenu by remember { mutableStateOf(false) }
+
+    val suggestions = remember(locNameVal) {
+        if (locNameVal.trim().length >= 2) {
+            PRESET_LOCATIONS.filter {
+                it.name.contains(locNameVal, ignoreCase = true) && 
+                !it.name.equals(locNameVal.trim(), ignoreCase = true)
+            }.take(5)
+        } else {
+            emptyList()
+        }
+    }
 
     // Observe save success triggers
     LaunchedEffect(viewModel.saveSuccess) {
@@ -340,6 +352,43 @@ fun BirthDataScreen(
                                 modifier = Modifier.fillMaxWidth()
                             )
 
+                            if (suggestions.isNotEmpty()) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(Color(0xFF231F3A), RoundedCornerShape(12.dp))
+                                        .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
+                                        .padding(vertical = 4.dp)
+                                ) {
+                                    suggestions.forEach { preset ->
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable {
+                                                    viewModel.setLocationName(preset.name)
+                                                    viewModel.setLatitude(preset.lat.toString())
+                                                    viewModel.setLongitude(preset.lon.toString())
+                                                }
+                                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.LocationOn,
+                                                contentDescription = null,
+                                                tint = Color(0xFFFFB300),
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = preset.name,
+                                                fontSize = 13.sp,
+                                                color = Color.White
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -529,3 +578,73 @@ fun BirthDataScreen(
         }
     }
 }
+
+data class PresetLocation(val name: String, val lat: Double, val lon: Double)
+
+val PRESET_LOCATIONS = listOf(
+    PresetLocation("New York City, USA", 40.7128, -74.0060),
+    PresetLocation("London, United Kingdom", 51.5074, -0.1278),
+    PresetLocation("Paris, France", 48.8566, 2.3522),
+    PresetLocation("Tokyo, Japan", 35.6762, 139.6503),
+    PresetLocation("Los Angeles, USA", 34.0522, -118.2437),
+    PresetLocation("Chicago, USA", 41.8781, -87.6298),
+    PresetLocation("Houston, USA", 29.7604, -95.3698),
+    PresetLocation("Phoenix, USA", 33.4484, -112.0740),
+    PresetLocation("Philadelphia, USA", 39.9526, -75.1652),
+    PresetLocation("San Antonio, USA", 29.4241, -98.4936),
+    PresetLocation("San Diego, USA", 32.7157, -117.1611),
+    PresetLocation("Dallas, USA", 32.7767, -96.7970),
+    PresetLocation("San Jose, USA", 37.3382, -121.8863),
+    PresetLocation("Austin, USA", 30.2672, -97.7431),
+    PresetLocation("Jacksonville, USA", 30.3322, -81.6557),
+    PresetLocation("San Francisco, USA", 37.7749, -122.4194),
+    PresetLocation("Seattle, USA", 47.6062, -122.3321),
+    PresetLocation("Denver, USA", 39.7392, -104.9903),
+    PresetLocation("Boston, USA", 42.3601, -71.0589),
+    PresetLocation("Miami, USA", 25.7617, -80.1918),
+    PresetLocation("Atlanta, USA", 33.7490, -84.3880),
+    PresetLocation("Sydney, Australia", -33.8688, 151.2093),
+    PresetLocation("Melbourne, Australia", -37.8136, 144.9631),
+    PresetLocation("Berlin, Germany", 52.5200, 13.4050),
+    PresetLocation("Munich, Germany", 48.1351, 11.5820),
+    PresetLocation("Rome, Italy", 41.9028, 12.4964),
+    PresetLocation("Milan, Italy", 45.4642, 9.1900),
+    PresetLocation("Madrid, Spain", 40.4168, -3.7038),
+    PresetLocation("Barcelona, Spain", 41.3851, 2.1734),
+    PresetLocation("Vienna, Austria", 48.2082, 16.3738),
+    PresetLocation("Zurich, Switzerland", 47.3769, 8.5417),
+    PresetLocation("Geneva, Switzerland", 46.2044, 6.1432),
+    PresetLocation("Brussels, Belgium", 50.8503, 4.3517),
+    PresetLocation("Amsterdam, Netherlands", 52.3676, 4.9041),
+    PresetLocation("Dublin, Ireland", 53.3498, -6.2603),
+    PresetLocation("Copenhagen, Denmark", 55.6761, 12.5683),
+    PresetLocation("Stockholm, Sweden", 59.3293, 18.0686),
+    PresetLocation("Oslo, Norway", 59.9139, 10.7522),
+    PresetLocation("Athens, Greece", 37.9838, 23.7275),
+    PresetLocation("Cairo, Egypt", 30.0444, 31.2357),
+    PresetLocation("Johannesburg, South Africa", -26.2041, 28.0473),
+    PresetLocation("Cape Town, South Africa", -33.9249, 18.4241),
+    PresetLocation("Dubai, United Arab Emirates", 25.2048, 55.2708),
+    PresetLocation("Mumbai, India", 19.0760, 72.8777),
+    PresetLocation("New Delhi, India", 28.6139, 77.2090),
+    PresetLocation("Singapore", 1.3521, 103.8198),
+    PresetLocation("Hong Kong", 22.3193, 114.1694),
+    PresetLocation("Beijing, China", 39.9042, 116.4074),
+    PresetLocation("Shanghai, China", 31.2304, 121.4737),
+    PresetLocation("Moscow, Russia", 55.7558, 37.6173),
+    PresetLocation("Rio de Janeiro, Brazil", -22.9068, -43.1729),
+    PresetLocation("Sao Paulo, Brazil", -23.5505, -46.6333),
+    PresetLocation("Buenos Aires, Argentina", -34.6037, -58.3816),
+    PresetLocation("Toronto, Canada", 43.6532, -79.3832),
+    PresetLocation("Vancouver, Canada", 49.2827, -123.1207),
+    PresetLocation("Montreal, Canada", 45.5017, -73.5673),
+    PresetLocation("Mexico City, Mexico", 19.4326, -99.1332),
+    PresetLocation("Istanbul, Turkey", 41.0082, 28.9784),
+    PresetLocation("Seoul, South Korea", 37.5665, 126.9780),
+    PresetLocation("Bangkok, Thailand", 13.7563, 100.5018),
+    PresetLocation("Manila, Philippines", 14.5995, 120.9842),
+    PresetLocation("Jakarta, Indonesia", -6.2088, 106.8456),
+    PresetLocation("Reykjavik, Iceland", 64.1466, -21.9426),
+    PresetLocation("Honolulu, Hawaii, USA", 21.3069, -157.8583),
+    PresetLocation("Anchorage, Alaska, USA", 61.2181, -149.9003)
+)

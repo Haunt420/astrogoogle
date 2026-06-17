@@ -5,7 +5,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -20,6 +20,7 @@ import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimeScrubber(
     currentInstant: Instant,
@@ -49,16 +50,67 @@ fun TimeScrubber(
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Text representation of date & time
-            Text(
-                text = formattedStr,
-                fontSize = 17.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF4DD0E1),
-                fontFamily = FontFamily.Monospace,
-                textAlign = TextAlign.Center,
+            // Text representation of date & time with Calendar Trigger
+            var showDatePicker by remember { mutableStateOf(false) }
+
+            if (showDatePicker) {
+                val datePickerState = rememberDatePickerState(
+                    initialSelectedDateMillis = currentInstant.toEpochMilli()
+                )
+                DatePickerDialog(
+                    onDismissRequest = { showDatePicker = false },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            datePickerState.selectedDateMillis?.let { millis ->
+                                val selectedDate = Instant.ofEpochMilli(millis).atOffset(ZoneOffset.UTC).toLocalDate()
+                                val currentTime = currentInstant.atOffset(ZoneOffset.UTC).toLocalTime()
+                                val updatedInstant = selectedDate.atTime(currentTime).toInstant(ZoneOffset.UTC)
+                                onInstantChanged(updatedInstant)
+                            }
+                            showDatePicker = false
+                        }) {
+                            Text("OK", color = Color(0xFFFFB300))
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDatePicker = false }) {
+                            Text("Cancel", color = Color.White.copy(alpha = 0.6f))
+                        }
+                    },
+                    colors = DatePickerDefaults.colors(
+                        containerColor = Color(0xFF1C1A32)
+                    )
+                ) {
+                    DatePicker(state = datePickerState)
+                }
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
                 modifier = Modifier.padding(bottom = 8.dp)
-            )
+            ) {
+                Text(
+                    text = formattedStr,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF4DD0E1),
+                    fontFamily = FontFamily.Monospace,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(
+                    onClick = { showDatePicker = true },
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.DateRange,
+                        contentDescription = "Select Date",
+                        tint = Color(0xFFFFB300),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
 
             // Slider & Play controls row
             Row(
