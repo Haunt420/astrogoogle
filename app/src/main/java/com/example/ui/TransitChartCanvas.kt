@@ -3,8 +3,7 @@ package com.example.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -17,6 +16,17 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.example.model.*
 import kotlin.math.*
 
@@ -37,6 +47,9 @@ fun TransitChartCanvas(
     modifier: Modifier = Modifier
 ) {
     val textMeasurer = rememberTextMeasurer()
+
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
 
     val backgroundBrush = remember {
         Brush.radialGradient(
@@ -59,16 +72,67 @@ fun TransitChartCanvas(
         Color(0xFFFFB74D), Color(0xFFE0E0E0), Color(0xFF9575CD), Color(0xFF4DB6AC)  // Sag, Cap, Aqu, Pis
     )
 
-    Canvas(
-        modifier = modifier
-            .background(backgroundBrush)
-    ) {
-        val width = size.width
-        val height = size.height
-        val center = Offset(width / 2f, height / 2f)
-        val outerRadius = (min(width, height) / 2f) * 0.95f
+    Box(modifier = modifier) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(backgroundBrush)
+                .pointerInput(Unit) {
+                    detectTransformGestures { centroid, pan, zoom, _ ->
+                        val oldScale = scale
+                        val newScale = (scale * zoom).coerceIn(1.0f, 6.0f)
+                        
+                        scale = newScale
+                        if (newScale == 1.0f) {
+                            offset = Offset.Zero
+                        } else {
+                            val scaleFactor = newScale / oldScale
+                            offset = (offset + pan) * scaleFactor + centroid * (1f - scaleFactor)
+                            
+                            // Prevent dragging off boundaries
+                            val maxPanX = (size.width * (newScale - 1f)) / 2f
+                            val maxPanY = (size.height * (newScale - 1f)) / 2f
+                            offset = Offset(
+                                x = offset.x.coerceIn(-maxPanX * 1.5f, maxPanX * 1.5f),
+                                y = offset.y.coerceIn(-maxPanY * 1.5f, maxPanY * 1.5f)
+                            )
+                        }
+                    }
+                }
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            if (event.type == PointerEventType.Scroll) {
+                                val scrollAmount = event.changes.firstOrNull()?.scrollDelta?.y ?: 0f
+                                if (scrollAmount != 0f) {
+                                    val oldScale = scale
+                                    val zoomFactor = if (scrollAmount > 0) 0.9f else 1.1f
+                                    val newScale = (scale * zoomFactor).coerceIn(1.0f, 6.0f)
+                                    
+                                    scale = newScale
+                                    if (newScale == 1.0f) {
+                                        offset = Offset.Zero
+                                    } else {
+                                        val scaleFactor = newScale / oldScale
+                                        offset = offset * scaleFactor
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+        ) {
+            val width = size.width
+            val height = size.height
+            val center = Offset(width / 2f, height / 2f)
+            val outerRadius = (min(width, height) / 2f) * 0.95f
 
-        if (outerRadius <= 0) return@Canvas
+            if (outerRadius <= 0) return@Canvas
+
+            // Apply zoom transform scale & pan translation to drawContext
+            drawContext.transform.translate(offset.x, offset.y)
+            drawContext.transform.scale(scale, scale, pivot = center)
 
         // Rotation base: if Natal Ascendant is valid, rotate so ASC is at 180° (flat left).
         // Otherwise, baseline Aries 0° to the absolute left (180°).
@@ -105,17 +169,49 @@ fun TransitChartCanvas(
         // Draw house cusps if valid
         if (state.natalHouses.isValid) {
             val cusps = state.natalHouses.cusps
+            val rOuterHouses = outerRadius * 0.86f
+
+            // 1) Draw filled background sectors with subtle alternating shades
+            for (i in 1..12) {
+                val cuspLong = cusps[i]
+                val nextCuspLong = cusps[if (i == 12) 1 else i + 1]
+
+                val screenStartAngle = longToScreenAngle(cuspLong)
+                val diff = (nextCuspLong - cuspLong + 360.0) % 360.0
+                val sweepAngle = -diff // sweep counter-clockwise
+
+                val opacity = if (i % 2 == 0) 0.05f else 0.02f
+                drawArc(
+                    color = Color(0xFF4DD0E1).copy(alpha = opacity),
+                    startAngle = screenStartAngle.toFloat(),
+                    sweepAngle = sweepAngle.toFloat(),
+                    useCenter = true,
+                    topLeft = Offset(center.x - rOuterHouses, center.y - rOuterHouses),
+                    size = Size(rOuterHouses * 2f, rOuterHouses * 2f)
+                )
+            }
+
+            // Mask the center hollow hub inside the house sectors (from radius fraction 0f to 0.30f)
+            val rInnerHouses = outerRadius * 0.30f
+            drawCircle(
+                color = Color(0xFF0F0C1B), // Matches chart background
+                radius = rInnerHouses,
+                center = center,
+                style = Fill
+            )
+
+            // 2) Draw extended spokes lines and labels
             for (i in 1..12) {
                 val cuspLong = cusps[i]
                 val cuspOffsetInner = longToOffset(cuspLong, 0.30f)
-                val cuspOffsetOuter = longToOffset(cuspLong, 0.48f)
+                val cuspOffsetOuter = longToOffset(cuspLong, 0.86f) // Extended to zodiac inner boundary
                 
                 // Draw line
                 drawLine(
-                    color = Color.White.copy(alpha = if (i == 1 || i == 10) 0.5f else 0.2f),
+                    color = Color.White.copy(alpha = if (i == 1 || i == 10) 0.45f else 0.12f),
                     start = cuspOffsetInner,
                     end = cuspOffsetOuter,
-                    strokeWidth = if (i == 1 || i == 10) 2.dp.toPx() else 1.dp.toPx()
+                    strokeWidth = if (i == 1 || i == 10) 1.8f.dp.toPx() else 0.8f.dp.toPx()
                 )
 
                 // Draw house labels
@@ -132,7 +228,7 @@ fun TransitChartCanvas(
                 val houseLabelOffset = longToOffset(midCuspLong, 0.36f)
                 val labelLayout = textMeasurer.measure(
                     text = i.toString(),
-                    style = TextStyle(fontSize = 11.sp, color = Color.White.copy(alpha = 0.35f))
+                    style = TextStyle(fontSize = 11.sp, color = Color.White.copy(alpha = 0.4f), fontWeight = FontWeight.Bold)
                 )
                 drawText(
                     textLayoutResult = labelLayout,
@@ -287,6 +383,43 @@ fun TransitChartCanvas(
 
             drawGlyph(center, glyphOffset, p.body, Color(0xFF4DD0E1), textMeasurer)
         }
+    }
+
+    if (scale > 1.05f) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+        ) {
+            Button(
+                onClick = {
+                    scale = 1f
+                    offset = Offset.Zero
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF1E1B33).copy(alpha = 0.9f),
+                    contentColor = Color(0xFFFFB300)
+                ),
+                shape = RoundedCornerShape(20.dp),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                modifier = Modifier.height(36.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = "Reset Zoom",
+                    modifier = Modifier.size(16.dp),
+                    tint = Color(0xFFFFB300)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    "Reset Zoom",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+        }
+    }
     }
 }
 
@@ -486,10 +619,10 @@ private fun DrawScope.drawGlyph(
             drawPath(jupiterPath, color, style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round, join = StrokeJoin.Round))
         }
         ChartBody.SATURN -> {
-            // Saturn: Stylized sweeping sickle cross
+            // Saturn: Stylized sweeping sickle cross with a beautiful glowing planetary ring overlays
+            val cx = offset.x
+            val cy = offset.y - 1.dp.toPx()
             val saturnPath = Path().apply {
-                val cx = offset.x
-                val cy = offset.y - 1.dp.toPx()
                 // Vertical/cross pillar
                 moveTo(cx - 1.dp.toPx(), cy - 5.1f.dp.toPx())
                 lineTo(cx - 1.dp.toPx(), cy + 1.9f.dp.toPx())
@@ -506,6 +639,15 @@ private fun DrawScope.drawGlyph(
                 quadraticTo(cx - 3.5f.dp.toPx(), cy + 6.1f.dp.toPx(), cx - 3.5f.dp.toPx(), cy + 3.5f.dp.toPx())
             }
             drawPath(saturnPath, color, style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round, join = StrokeJoin.Round))
+
+            // Draw beautiful diagonal planetary rings through the bottom curve
+            drawLine(
+                color = color.copy(alpha = 0.85f),
+                start = Offset(cx - 6.dp.toPx(), cy + 6.dp.toPx()),
+                end = Offset(cx + 5.dp.toPx(), cy + 1.5f.dp.toPx()),
+                strokeWidth = 1.2f.dp.toPx(),
+                cap = StrokeCap.Round
+            )
         }
         ChartBody.URANUS -> {
             // Uranus: Circle, dot at center, with arrow pointing vertically on top
@@ -903,21 +1045,47 @@ private fun DrawScope.drawZodiacRing(
     val innerR = outerRadius * innerFraction
     val outerR = outerRadius * outerFraction
 
+    val signs = ZodiacSign.entries
+
+    // 1. Draw filled background slices for all zodiac signs (Element colors)
+    for (i in 0..11) {
+        val sign = signs[i]
+        val startLongitude = i * 30.0
+        val screenAngleDegrees = (180.0 - (startLongitude - rotationLong + 360.0) % 360.0 + 360.0) % 360.0
+
+        // Sector wedge
+        drawArc(
+            color = sign.color.copy(alpha = 0.08f),
+            startAngle = screenAngleDegrees.toFloat(),
+            sweepAngle = -30f,
+            useCenter = true,
+            topLeft = Offset(center.x - outerR, center.y - outerR),
+            size = Size(outerR * 2f, outerR * 2f)
+        )
+    }
+
+    // Immediately draw a filled circle over the center to mask everything inside innerR
+    drawCircle(
+        color = Color(0xFF0F0C1B), // Matches chart background
+        radius = innerR,
+        center = center,
+        style = Fill
+    )
+
     // Draw outer enclosing boundary circle
     drawCircle(
-        color = Color.White.copy(alpha = 0.15f),
+        color = Color.White.copy(alpha = 0.20f),
         radius = outerR,
         center = center,
         style = Stroke(width = 1.dp.toPx())
     )
     drawCircle(
-        color = Color.White.copy(alpha = 0.15f),
+        color = Color.White.copy(alpha = 0.20f),
         radius = innerR,
         center = center,
         style = Stroke(width = 1.dp.toPx())
     )
 
-    val signs = ZodiacSign.entries
     for (i in 0..11) {
         val sign = signs[i]
         val startLongitude = i * 30.0
@@ -936,11 +1104,60 @@ private fun DrawScope.drawZodiacRing(
         )
 
         drawLine(
-            color = Color.White.copy(alpha = 0.10f),
+            color = Color.White.copy(alpha = 0.25f),
             start = innerPt,
             end = outerPt,
-            strokeWidth = 1.dp.toPx()
+            strokeWidth = 1.5f.dp.toPx()
         )
+
+        // Draw Decan Dividing lines (at 10 degrees and 20 degrees within each sign)
+        for (j in 1..2) {
+            val decanLong = startLongitude + j * 10.0
+            val decanAngle = (180.0 - (decanLong - rotationLong + 360.0) % 360.0 + 360.0) % 360.0
+            val decanRad = Math.toRadians(decanAngle)
+
+            val innerDecanPt = Offset(
+                (center.x + innerR * cos(decanRad)).toFloat(),
+                (center.y + innerR * sin(decanRad)).toFloat()
+            )
+            val outerDecanPt = Offset(
+                (center.x + (innerR + (outerR - innerR) * 0.35f) * cos(decanRad)).toFloat(), // Ticks extending 35% across the zodiac band
+                (center.y + (innerR + (outerR - innerR) * 0.35f) * sin(decanRad)).toFloat()
+            )
+
+            drawLine(
+                color = Color.White.copy(alpha = 0.15f),
+                start = innerDecanPt,
+                end = outerDecanPt,
+                strokeWidth = 1.dp.toPx()
+            )
+        }
+
+        // Draw fine 1-degree tick marks on the inner edge of the zodiac ring
+        for (deg in 1 until 30) {
+            if (deg % 10 == 0) continue // Skip decans already covered
+            val tickLong = startLongitude + deg
+            val tickAngle = (180.0 - (tickLong - rotationLong + 360.0) % 360.0 + 360.0) % 360.0
+            val tickRad = Math.toRadians(tickAngle)
+            val tickLengthFraction = if (deg % 5 == 0) 0.18f else 0.10f
+            val tickLength = (outerR - innerR) * tickLengthFraction
+
+            val tickInnerPt = Offset(
+                (center.x + innerR * cos(tickRad)).toFloat(),
+                (center.y + innerR * sin(tickRad)).toFloat()
+            )
+            val tickOuterPt = Offset(
+                (center.x + (innerR + tickLength) * cos(tickRad)).toFloat(),
+                (center.y + (innerR + tickLength) * sin(tickRad)).toFloat()
+            )
+
+            drawLine(
+                color = Color.White.copy(alpha = 0.08f),
+                start = tickInnerPt,
+                end = tickOuterPt,
+                strokeWidth = 0.5f.dp.toPx()
+            )
+        }
 
         // Draw glyph in the middle of sign arc (startLong + 15 degrees)
         val midLong = startLongitude + 15.0
@@ -981,10 +1198,10 @@ private fun fanningLayout(positions: List<BodyPosition>): List<GlyphPlacement24>
     val sorted = positions.sortedBy { it.eclipticLongitude }
     val placements = sorted.map { GlyphPlacement24(it, it.eclipticLongitude, 0f) }.toMutableList()
 
-    // Run custom relaxation loop to force apart close points
     var converged = false
     var iterations = 0
-    while (!converged && iterations < 15) {
+    val minSep = 9.0 // 9 degrees separation ensures zero text or bubble overlapping
+    while (!converged && iterations < 35) {
         converged = true
         iterations++
 
@@ -993,29 +1210,40 @@ private fun fanningLayout(positions: List<BodyPosition>): List<GlyphPlacement24>
             val nextIndex = (i + 1) % placements.size
             val next = placements[nextIndex]
 
-            val currentLong = current.finalLongitude
-            // Next longitude might wrap across 0/360 degrees boundary
             val rawDiff = next.finalLongitude - current.finalLongitude
             val diff = if (rawDiff < 0) rawDiff + 360.0 else rawDiff
 
-            if (diff < MIN_ANGULAR_SEP) {
-                // Too close! Push them apart
-                val pushAmount = (MIN_ANGULAR_SEP - diff) / 2.0
+            if (diff < minSep) {
+                val pushAmount = (minSep - diff) / 2.0
                 
+                // Let's alternate custom staggered radial layers so they don't group at same height
+                val currOffset = (current.radialOffset + 0.18f).coerceAtMost(1.2f)
+                val nextOffset = (next.radialOffset + 0.18f).coerceAtMost(1.2f)
+
                 placements[i] = current.copy(
                     finalLongitude = (current.finalLongitude - pushAmount + 360.0) % 360.0,
-                    radialOffset = (current.radialOffset + 0.12f).coerceAtMost(1.0f)
+                    radialOffset = currOffset
                 )
                 placements[nextIndex] = next.copy(
                     finalLongitude = (next.finalLongitude + pushAmount) % 360.0,
-                    radialOffset = (next.radialOffset + 0.12f).coerceAtMost(1.0f)
+                    radialOffset = nextOffset
                 )
                 converged = false
-            } else {
-                // Slowly relax radial offsets if safe
-                if (current.radialOffset > 0f) {
-                    placements[i] = current.copy(radialOffset = (current.radialOffset - 0.02f).coerceAtLeast(0f))
-                }
+            }
+        }
+    }
+
+    // Post-pass: ensure close adjacent objects are offset radially to different levels
+    // (creating concentric tiered orbits like the iOS app shown in the uploaded picture)
+    for (i in 0 until placements.size) {
+        val current = placements[i]
+        val prev = placements[(i - 1 + placements.size) % placements.size]
+        val rawDiff = current.finalLongitude - prev.finalLongitude
+        val diff = if (rawDiff < 0) rawDiff + 360.0 else rawDiff
+        if (diff < minSep * 1.5) {
+            // If they are angularly very close, assign them alternating heights: 0f, 0.4f, 0.8f
+            if (abs(current.radialOffset - prev.radialOffset) < 0.12f) {
+                placements[i] = current.copy(radialOffset = (prev.radialOffset + 0.40f) % 1.2f)
             }
         }
     }
