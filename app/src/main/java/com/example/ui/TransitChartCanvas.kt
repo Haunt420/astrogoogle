@@ -17,6 +17,8 @@ import androidx.compose.ui.text.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventType
@@ -50,6 +52,8 @@ fun TransitChartCanvas(
 
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
+
+    var tappedAspect by remember { mutableStateOf<Aspect?>(null) }
 
     val backgroundBrush = remember {
         Brush.radialGradient(
@@ -121,6 +125,64 @@ fun TransitChartCanvas(
                             }
                         }
                     }
+                }
+                .pointerInput(state.aspects, scale, offset) {
+                    detectTapGestures(
+                        onPress = { _: Offset -> tappedAspect = null },
+                        onTap = { tapScreenOffset: Offset ->
+                            val width = size.width.toFloat()
+                            val height = size.height.toFloat()
+                            val center = Offset(width / 2f, height / 2f)
+                            
+                            val logicalTapX = (tapScreenOffset.x - center.x - offset.x) / scale + center.x
+                            val logicalTapY = (tapScreenOffset.y - center.y - offset.y) / scale + center.y
+                            
+                            val outerRadius = (min(width, height) / 2f) * 0.95f
+                            
+                            val rotationLong = if (state.natalHouses.isValid) state.natalHouses.ascendant else 0.0
+                            
+                            fun localLongToOffset(long: Double, radiusFraction: Float): Offset {
+                                val adjusted = (long - rotationLong + 360.0) % 360.0
+                                val angleRad = Math.toRadians((180.0 - adjusted + 360.0) % 360.0)
+                                val r = outerRadius * radiusFraction
+                                return Offset(
+                                    (center.x + r * cos(angleRad)).toFloat(),
+                                    (center.y + r * sin(angleRad)).toFloat()
+                                )
+                            }
+                            
+                            var closest: Aspect? = null
+                            var minDistance = Float.MAX_VALUE
+                            for (aspect in state.aspects) {
+                                val start = localLongToOffset(aspect.natalPosition.eclipticLongitude, 0.40f)
+                                val end = localLongToOffset(aspect.transitPosition.eclipticLongitude, 0.40f)
+                                
+                                val dx = end.x - start.x
+                                val dy = end.y - start.y
+                                val l2 = dx * dx + dy * dy
+                                val t = if (l2 == 0f) 0f else {
+                                    ((logicalTapX - start.x) * dx + (logicalTapY - start.y) * dy) / l2
+                                }.coerceIn(0f, 1f)
+                                
+                                val projX = start.x + t * dx
+                                val projY = start.y + t * dy
+                                val distDx = logicalTapX - projX
+                                val distDy = logicalTapY - projY
+                                val dist = sqrt((distDx * distDx + distDy * distDy).toDouble()).toFloat()
+                                if (dist < minDistance) {
+                                    minDistance = dist
+                                    closest = aspect
+                                }
+                            }
+                            
+                            // Hitbox: 30f px, scaled
+                            if (minDistance < (30f / scale) && closest != null) {
+                                tappedAspect = closest
+                            } else {
+                                tappedAspect = null
+                            }
+                        }
+                    )
                 }
         ) {
             val width = size.width
@@ -471,7 +533,88 @@ fun TransitChartCanvas(
             }
         }
     }
+
+    tappedAspect?.let { aspect ->
+        AspectInfoPopup(aspect = aspect, onDismiss = { tappedAspect = null })
     }
+    }
+}
+
+@Composable
+fun AspectInfoPopup(
+    aspect: Aspect,
+    onDismiss: () -> Unit
+) {
+    androidx.compose.ui.window.Popup(
+        alignment = Alignment.Center,
+        onDismissRequest = onDismiss
+    ) {
+        val title = "Transit ${aspect.transitPosition.body.displayName} ${aspect.type.name.lowercase().replaceFirstChar { it.uppercase() }} Natal ${aspect.natalPosition.body.displayName}"
+        val strengthP = (aspect.strength * 100).toInt()
+        val orb = String.format("%.1f°", aspect.orb)
+
+        val nature = when (aspect.type) {
+            AspectType.CONJUNCTION -> "A powerful merging of energies. The transit planet is fusing its traits directly onto your natal placement, bringing a major focus and intensity to this area of life."
+            AspectType.OPPOSITION -> "A challenging polarization. You may experience push-pull dynamics, conflicts, or external events acting as a mirror to your internal state. Finding balance is key."
+            AspectType.SQUARE -> "Friction and dynamic tension. This aspect forces action and creates internal pressure that demands a resolution, leading to rapid growth."
+            AspectType.TRINE -> "Harmonious flow and ease. Opportunities arise naturally and talents are readily available. Beware of taking this smooth energy for granted."
+            AspectType.SEXTILE -> "A stimulating intellectual or social connection. It brings opportunities that require a bit of conscious effort to fully actualize."
+            else -> "A subtle minor aspect, adding flavor and nuance to the background of your current transits."
+        }
+        
+        val specific = getSpecificAspectText(aspect.transitPosition.body, aspect.natalPosition.body)
+
+        Box(
+            modifier = Modifier
+                .padding(24.dp)
+                .fillMaxWidth(0.85f)
+                .background(Color(0xFF1E1B33).copy(alpha = 0.95f), RoundedCornerShape(16.dp))
+                .border(1.dp, Color(0xFF4DD0E1).copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                .padding(16.dp)
+                .pointerInput(Unit) {
+                    detectTapGestures { _: Offset -> onDismiss() }
+                }
+        ) {
+            Column {
+                Text(title, color = Color(0xFFFFB300), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(4.dp))
+                Text("Orb: $orb  (Strength: $strengthP%)", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
+                Spacer(Modifier.height(8.dp))
+                Text(nature, color = Color.White, fontSize = 13.sp, lineHeight = 18.sp)
+                Spacer(Modifier.height(8.dp))
+                Text(specific, color = Color(0xFF81C784), fontSize = 13.sp, lineHeight = 18.sp, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
+            }
+        }
+    }
+}
+
+fun getSpecificAspectText(tBody: ChartBody, nBody: ChartBody): String {
+    return "When Transiting ${tBody.displayName} interacts with Natal ${nBody.displayName}, ${tBody.displayName}'s themes of " +
+        getBodyTheme(tBody) + " strongly flavor how you experience your foundational " + getBodyTheme(nBody) + ". " +
+        "Pay attention to events or internal shifts that highlight these intertwined themes in your daily life right now."
+}
+
+fun getBodyTheme(body: ChartBody): String = when (body) {
+    ChartBody.SUN -> "core identity, vitality, and ego expression"
+    ChartBody.MOON -> "emotional needs, intuition, and inner world"
+    ChartBody.MERCURY -> "communication, perception, and reasoning"
+    ChartBody.VENUS -> "love, aesthetics, and relational harmony"
+    ChartBody.MARS -> "drive, assertion, and primal energy"
+    ChartBody.JUPITER -> "expansion, luck, and philosophical growth"
+    ChartBody.SATURN -> "discipline, restriction, and maturity"
+    ChartBody.URANUS -> "rebellion, sudden insights, and awakening"
+    ChartBody.NEPTUNE -> "dreams, illusions, and spiritual dissolution"
+    ChartBody.PLUTO -> "power, transformation, and rebirth"
+    ChartBody.NORTH_NODE -> "karmic destiny and future growth"
+    ChartBody.SOUTH_NODE -> "past karma and ingrained habits"
+    ChartBody.CHIRON -> "deep wounds and holistic healing"
+    ChartBody.LILITH -> "repressed desires and raw authenticity"
+    ChartBody.CERES -> "nurturing and unconditional care"
+    ChartBody.PALLAS -> "wisdom, strategy, and justice"
+    ChartBody.JUNO -> "commitment, loyalty, and partnerships"
+    ChartBody.VESTA -> "devotion, sacred focus, and independence"
+    ChartBody.PHOLUS -> "catalytic thresholds and sudden shifts"
+    else -> "mysterious cosmic forces"
 }
 
 private fun DrawScope.drawStarfield(center: Offset, outerRadius: Float) {
