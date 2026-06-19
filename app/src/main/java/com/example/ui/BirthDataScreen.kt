@@ -27,6 +27,119 @@ import com.example.viewmodel.BirthDataViewModel
 import kotlinx.coroutines.flow.collectLatest
 import java.time.LocalDateTime
 
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun WorldMapSelector(
+    onLocationSelected: (lat: Double, lon: Double) -> Unit,
+    onDismiss: () -> Unit
+) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        androidx.compose.material3.Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp), color = Color(0xFF1E1B33)) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Tap Map to Set Location", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(2f) // Width is 2x height for equirectangular (-180 to 180, -90 to 90)
+                        .background(Color(0xFF0F0C1B))
+                        .pointerInput(Unit) {
+                            awaitPointerEventScope {
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    if (event.type == androidx.compose.ui.input.pointer.PointerEventType.Press) {
+                                        val offset = event.changes.first().position
+                                        val width = size.width.toFloat()
+                                        val height = size.height.toFloat()
+                                        
+                                        val lon = (offset.x / width) * 360.0 - 180.0
+                                        val lat = 90.0 - (offset.y / height) * 180.0
+                                        
+                                        onLocationSelected(lat, lon)
+                                        onDismiss()
+                                    }
+                                }
+                            }
+                        }
+                ) {
+                    androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                        val w = size.width
+                        val h = size.height
+                        
+                        // Draw subtle grid
+                        for (i in 1..5) {
+                            drawLine(Color.White.copy(alpha=0.1f), Offset(0f, h*i/6f), Offset(w, h*i/6f))
+                        }
+                        for (i in 1..11) {
+                            drawLine(Color.White.copy(alpha=0.1f), Offset(w*i/12f, 0f), Offset(w*i/12f, h))
+                        }
+                        
+                        // equator and prime meridian
+                        drawLine(Color.White.copy(alpha=0.3f), Offset(0f, h/2f), Offset(w, h/2f), strokeWidth = 2f)
+                        drawLine(Color.White.copy(alpha=0.3f), Offset(w/2f, 0f), Offset(w/2f, h), strokeWidth = 2f)
+
+                        // Stylized continents (Equirectangular approximations)
+                        val path = androidx.compose.ui.graphics.Path().apply {
+                            // North America
+                            moveTo(w * 0.15f, h * 0.15f)
+                            lineTo(w * 0.35f, h * 0.15f)
+                            lineTo(w * 0.28f, h * 0.45f)
+                            lineTo(w * 0.15f, h * 0.45f)
+                            close()
+                            
+                            // South America
+                            moveTo(w * 0.28f, h * 0.45f)
+                            lineTo(w * 0.35f, h * 0.45f)
+                            lineTo(w * 0.30f, h * 0.85f)
+                            lineTo(w * 0.26f, h * 0.85f)
+                            close()
+
+                            // Eurasia
+                            moveTo(w * 0.42f, h * 0.15f)
+                            lineTo(w * 0.90f, h * 0.15f)
+                            lineTo(w * 0.85f, h * 0.45f)
+                            lineTo(w * 0.42f, h * 0.45f)
+                            close()
+                            
+                            // Africa
+                            moveTo(w * 0.42f, h * 0.45f)
+                            lineTo(w * 0.60f, h * 0.45f)
+                            lineTo(w * 0.55f, h * 0.75f)
+                            lineTo(w * 0.48f, h * 0.75f)
+                            close()
+                            
+                            // Australia
+                            moveTo(w * 0.75f, h * 0.65f)
+                            lineTo(w * 0.85f, h * 0.65f)
+                            lineTo(w * 0.85f, h * 0.80f)
+                            lineTo(w * 0.75f, h * 0.80f)
+                            close()
+                        }
+                        
+                        drawPath(path, Color(0xFF4DD0E1).copy(alpha = 0.3f), style = androidx.compose.ui.graphics.drawscope.Fill)
+                    }
+                }
+                
+                Text(
+                    text = "Equator is middle line. Center is Prime Meridian/London.",
+                    color = Color.White.copy(alpha = 0.5f),
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+                
+                androidx.compose.material3.TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
+                    Text("Cancel", color = Color(0xFFFFB300))
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BirthDataScreen(
@@ -336,6 +449,22 @@ fun BirthDataScreen(
                             verticalArrangement = Arrangement.spacedBy(16.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
+                            var showMap by remember { mutableStateOf(false) }
+
+                            if (showMap) {
+                                WorldMapSelector(
+                                    onLocationSelected = { lat, lon ->
+                                        // Round to 4 decimal places for neatness
+                                        val strLat = ((lat * 10000).toInt() / 10000.0).toString()
+                                        val strLon = ((lon * 10000).toInt() / 10000.0).toString()
+                                        viewModel.setLatitude(strLat)
+                                        viewModel.setLongitude(strLon)
+                                        viewModel.setLocationName("Selected on Map")
+                                    },
+                                    onDismiss = { showMap = false }
+                                )
+                            }
+
                             OutlinedTextField(
                                 value = locNameVal,
                                 onValueChange = { viewModel.setLocationName(it) },
@@ -347,7 +476,12 @@ fun BirthDataScreen(
                                     unfocusedTextColor = Color.White
                                 ),
                                 leadingIcon = {
-                                    Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color.White.copy(alpha = 0.4f))
+                                    Icon(
+                                        Icons.Default.LocationOn, 
+                                        contentDescription = "Map Selector", 
+                                        tint = Color(0xFF4DD0E1),
+                                        modifier = Modifier.clickable { showMap = true }.padding(4.dp)
+                                    )
                                 },
                                 modifier = Modifier.fillMaxWidth()
                             )
