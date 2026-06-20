@@ -55,27 +55,11 @@ fun TransitChartCanvas(
 ) {
     val textMeasurer = rememberTextMeasurer()
     
-    val glyphMap = mapOf(
-        ChartBody.SUN to ImageBitmap.imageResource(id = R.drawable.ic_sun),
-        ChartBody.MOON to ImageBitmap.imageResource(id = R.drawable.ic_moon),
-        ChartBody.MERCURY to ImageBitmap.imageResource(id = R.drawable.ic_mercury),
-        ChartBody.VENUS to ImageBitmap.imageResource(id = R.drawable.ic_venus),
-        ChartBody.MARS to ImageBitmap.imageResource(id = R.drawable.ic_mars),
-        ChartBody.JUPITER to ImageBitmap.imageResource(id = R.drawable.ic_jupiter),
-        ChartBody.SATURN to ImageBitmap.imageResource(id = R.drawable.ic_saturn),
-        ChartBody.URANUS to ImageBitmap.imageResource(id = R.drawable.ic_uranus),
-        ChartBody.NEPTUNE to ImageBitmap.imageResource(id = R.drawable.ic_neptune),
-        ChartBody.PLUTO to ImageBitmap.imageResource(id = R.drawable.ic_pluto),
-        ChartBody.NORTH_NODE to ImageBitmap.imageResource(id = R.drawable.ic_node),
-        ChartBody.SOUTH_NODE to ImageBitmap.imageResource(id = R.drawable.ic_node),
-        ChartBody.CHIRON to ImageBitmap.imageResource(id = R.drawable.ic_chiron),
-        ChartBody.LILITH to ImageBitmap.imageResource(id = R.drawable.ic_lilith_bm),
-        ChartBody.CERES to ImageBitmap.imageResource(id = R.drawable.ic_ceres),
-        ChartBody.PALLAS to ImageBitmap.imageResource(id = R.drawable.ic_pallas_athena),
-        ChartBody.JUNO to ImageBitmap.imageResource(id = R.drawable.ic_juno),
-        ChartBody.VESTA to ImageBitmap.imageResource(id = R.drawable.ic_vesta),
-        ChartBody.PHOLUS to ImageBitmap.imageResource(id = R.drawable.ic_pholus)
-    )
+    val glyphMap = mutableMapOf<ChartBody, androidx.compose.ui.graphics.ImageBitmap>()
+    for (b in ChartBody.values()) {
+        val bmp = IconAssets.getMarker(b)
+        if (bmp != null) glyphMap[b] = bmp
+    }
 
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }

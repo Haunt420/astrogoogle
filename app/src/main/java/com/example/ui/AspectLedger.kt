@@ -26,30 +26,7 @@ import com.example.model.AspectType
 
 
 
-fun getBodyDrawableId(body: com.example.model.ChartBody): Int? {
-    return when(body) {
-        com.example.model.ChartBody.SUN -> R.drawable.ic_sun
-        com.example.model.ChartBody.MOON -> R.drawable.ic_moon
-        com.example.model.ChartBody.MERCURY -> R.drawable.ic_mercury
-        com.example.model.ChartBody.VENUS -> R.drawable.ic_venus
-        com.example.model.ChartBody.MARS -> R.drawable.ic_mars
-        com.example.model.ChartBody.JUPITER -> R.drawable.ic_jupiter
-        com.example.model.ChartBody.SATURN -> R.drawable.ic_saturn
-        com.example.model.ChartBody.URANUS -> R.drawable.ic_uranus
-        com.example.model.ChartBody.NEPTUNE -> R.drawable.ic_neptune
-        com.example.model.ChartBody.PLUTO -> R.drawable.ic_pluto
-        com.example.model.ChartBody.NORTH_NODE -> R.drawable.ic_node
-        com.example.model.ChartBody.SOUTH_NODE -> R.drawable.ic_node
-        com.example.model.ChartBody.CHIRON -> R.drawable.ic_chiron
-        com.example.model.ChartBody.LILITH -> R.drawable.ic_lilith_bm
-        com.example.model.ChartBody.CERES -> R.drawable.ic_ceres
-        com.example.model.ChartBody.PALLAS -> R.drawable.ic_pallas_athena
-        com.example.model.ChartBody.JUNO -> R.drawable.ic_juno
-        com.example.model.ChartBody.VESTA -> R.drawable.ic_vesta
-        com.example.model.ChartBody.PHOLUS -> R.drawable.ic_pholus
-        else -> null
-    }
-}
+
 
 
 @Composable
