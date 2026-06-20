@@ -1,5 +1,9 @@
 package com.example.ui
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -9,34 +13,149 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.viewmodel.DateRange
 import com.example.viewmodel.ScrubGranularity
+import kotlinx.coroutines.delay
 import java.time.Instant
 import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
+import java.time.ZonedDateTime
 
-@OptIn(ExperimentalMaterial3Api::class)
+enum class ActiveUnit {
+    MONTH, DAY, YEAR, HOUR, MINUTE
+}
+
+@OptIn(ExperimentalAnimationApi::class)
+@Composable
+fun RolodexElement(
+    text: String,
+    value: Long,
+    isActive: Boolean,
+    onActivate: () -> Unit,
+    onNudge: (Long) -> Unit
+) {
+    var accumulatedDelta by remember { mutableFloatStateOf(0f) }
+    var slideUp by remember { mutableStateOf(true) }
+    var lastValue by remember { mutableLongStateOf(value) }
+
+    if (value != lastValue) {
+        slideUp = value > lastValue
+        lastValue = value
+    }
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.pointerInput(Unit) {
+            detectVerticalDragGestures(
+                onDragStart = { onActivate() },
+                onVerticalDrag = { change, dragAmount ->
+                    change.consume()
+                    accumulatedDelta += dragAmount
+                    if (accumulatedDelta < -30f) {
+                        onNudge(1)
+                        accumulatedDelta = 0f
+                    } else if (accumulatedDelta > 30f) {
+                        onNudge(-1)
+                        accumulatedDelta = 0f
+                    }
+                },
+                onDragEnd = { accumulatedDelta = 0f },
+                onDragCancel = { accumulatedDelta = 0f }
+            )
+        }
+    ) {
+        AnimatedContent(
+            targetState = text,
+            transitionSpec = {
+                if (slideUp) {
+                    (slideInVertically { height -> height } + fadeIn(tween(200))) togetherWith
+                            (slideOutVertically { height -> -height } + fadeOut(tween(200)))
+                } else {
+                    (slideInVertically { height -> -height } + fadeIn(tween(200))) togetherWith
+                            (slideOutVertically { height -> height } + fadeOut(tween(200)))
+                }
+            },
+            label = "rolodex"
+        ) { targetText ->
+            Text(
+                text = targetText,
+                fontSize = 22.sp,
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold,
+                color = if (isActive) Color.White else Color(0xFF4DD0E1),
+                style = TextStyle(
+                    shadow = if (isActive) Shadow(color = Color.White, blurRadius = 12f) else null
+                ),
+                modifier = Modifier.padding(horizontal = 2.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun StaticText(text: String) {
+    Text(
+        text = text,
+        fontSize = 22.sp,
+        fontFamily = FontFamily.Monospace,
+        color = Color(0xFF888888),
+        modifier = Modifier.padding(horizontal = 2.dp)
+    )
+}
+
 @Composable
 fun TimeScrubber(
     currentInstant: Instant,
-    selectedGranularity: ScrubGranularity,
-    isPlaying: Boolean,
+    selectedGranularity: ScrubGranularity, // Ignored now
+    isPlaying: Boolean, // Ignored from VM
     onInstantChanged: (Instant) -> Unit,
-    onGranularitySelected: (ScrubGranularity) -> Unit,
-    onNudge: (Long) -> Unit,
-    onTogglePlayback: () -> Unit,
+    onGranularitySelected: (ScrubGranularity) -> Unit, // Ignored
+    onNudge: (Long) -> Unit, // Ignored
+    onTogglePlayback: () -> Unit, // Ignored
     onResetToNow: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val formatter = DateTimeFormatter.ofPattern("EEE, MMM dd, yyyy  HH:mm 'UTC'")
-        .withZone(ZoneOffset.UTC)
+    var activeUnit by remember { mutableStateOf(ActiveUnit.DAY) }
+    var isPlayingLocal by remember { mutableStateOf(false) }
 
-    val formattedStr = formatter.format(currentInstant)
+    val zdt = currentInstant.atZone(ZoneOffset.UTC)
+    val currentZdt by rememberUpdatedState(zdt)
+
+    LaunchedEffect(isPlayingLocal, activeUnit) {
+        if (isPlayingLocal) {
+            while (true) {
+                delay(1000)
+                val nextZdt = when (activeUnit) {
+                    ActiveUnit.MONTH -> currentZdt.plusMonths(1)
+                    ActiveUnit.DAY -> currentZdt.plusDays(1)
+                    ActiveUnit.YEAR -> currentZdt.plusYears(1)
+                    ActiveUnit.HOUR -> currentZdt.plusHours(1)
+                    ActiveUnit.MINUTE -> currentZdt.plusMinutes(1)
+                }
+                val newInst = nextZdt.toInstant().coerceIn(DateRange.MIN_INSTANT, DateRange.MAX_INSTANT)
+                onInstantChanged(newInst)
+            }
+        }
+    }
+
+    fun applyNudge(unit: ActiveUnit, amount: Long) {
+        isPlayingLocal = false
+        val nextZdt = when (unit) {
+            ActiveUnit.MONTH -> zdt.plusMonths(amount)
+            ActiveUnit.DAY -> zdt.plusDays(amount)
+            ActiveUnit.YEAR -> zdt.plusYears(amount)
+            ActiveUnit.HOUR -> zdt.plusHours(amount)
+            ActiveUnit.MINUTE -> zdt.plusMinutes(amount)
+        }
+        val newInst = nextZdt.toInstant().coerceIn(DateRange.MIN_INSTANT, DateRange.MAX_INSTANT)
+        onInstantChanged(newInst)
+    }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -50,209 +169,128 @@ fun TimeScrubber(
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Text representation of date & time with Calendar Trigger
-            var showDatePicker by remember { mutableStateOf(false) }
-
-            if (showDatePicker) {
-                val datePickerState = rememberDatePickerState(
-                    initialSelectedDateMillis = currentInstant.toEpochMilli()
-                )
-                DatePickerDialog(
-                    onDismissRequest = { showDatePicker = false },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            datePickerState.selectedDateMillis?.let { millis ->
-                                val selectedDate = Instant.ofEpochMilli(millis).atOffset(ZoneOffset.UTC).toLocalDate()
-                                val currentTime = currentInstant.atOffset(ZoneOffset.UTC).toLocalTime()
-                                val updatedInstant = selectedDate.atTime(currentTime).toInstant(ZoneOffset.UTC)
-                                onInstantChanged(updatedInstant)
-                            }
-                            showDatePicker = false
-                        }) {
-                            Text("OK", color = Color(0xFFFFB300))
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showDatePicker = false }) {
-                            Text("Cancel", color = Color.White.copy(alpha = 0.6f))
-                        }
-                    },
-                    colors = DatePickerDefaults.colors(
-                        containerColor = Color(0xFF1C1A32)
-                    )
-                ) {
-                    DatePicker(state = datePickerState)
-                }
-            }
-
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.padding(bottom = 8.dp)
+                modifier = Modifier.fillMaxWidth().background(Color(0xFF0F0C1B), RoundedCornerShape(12.dp)).padding(vertical = 16.dp, horizontal = 8.dp)
             ) {
-                Text(
-                    text = formattedStr,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF4DD0E1),
-                    fontFamily = FontFamily.Monospace,
-                    textAlign = TextAlign.Center
+                val dayOfWeek = zdt.format(java.time.format.DateTimeFormatter.ofPattern("EEE"))
+                StaticText("$dayOfWeek,")
+                
+                RolodexElement(
+                    text = zdt.format(java.time.format.DateTimeFormatter.ofPattern("MMM")),
+                    value = zdt.year * 12L + zdt.monthValue,
+                    isActive = activeUnit == ActiveUnit.MONTH,
+                    onActivate = { activeUnit = ActiveUnit.MONTH },
+                    onNudge = { applyNudge(ActiveUnit.MONTH, it) }
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                IconButton(
-                    onClick = { showDatePicker = true },
-                    modifier = Modifier.size(28.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.DateRange,
-                        contentDescription = "Select Date",
-                        tint = Color(0xFFFFB300),
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+                
+                RolodexElement(
+                    text = zdt.format(java.time.format.DateTimeFormatter.ofPattern("dd")),
+                    value = zdt.toEpochSecond() / 86400, // Approximate for direction
+                    isActive = activeUnit == ActiveUnit.DAY,
+                    onActivate = { activeUnit = ActiveUnit.DAY },
+                    onNudge = { applyNudge(ActiveUnit.DAY, it) }
+                )
+                
+                StaticText(",")
+                
+                RolodexElement(
+                    text = zdt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy")),
+                    value = zdt.year.toLong(),
+                    isActive = activeUnit == ActiveUnit.YEAR,
+                    onActivate = { activeUnit = ActiveUnit.YEAR },
+                    onNudge = { applyNudge(ActiveUnit.YEAR, it) }
+                )
+            }
+            
+            Spacer(Modifier.height(8.dp))
+            
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth().background(Color(0xFF0F0C1B), RoundedCornerShape(12.dp)).padding(vertical = 12.dp, horizontal = 8.dp)
+            ) {
+                RolodexElement(
+                    text = zdt.format(java.time.format.DateTimeFormatter.ofPattern("HH")),
+                    value = zdt.toEpochSecond() / 3600,
+                    isActive = activeUnit == ActiveUnit.HOUR,
+                    onActivate = { activeUnit = ActiveUnit.HOUR },
+                    onNudge = { applyNudge(ActiveUnit.HOUR, it) }
+                )
+                
+                StaticText(":")
+                
+                RolodexElement(
+                    text = zdt.format(java.time.format.DateTimeFormatter.ofPattern("mm")),
+                    value = zdt.toEpochSecond() / 60,
+                    isActive = activeUnit == ActiveUnit.MINUTE,
+                    onActivate = { activeUnit = ActiveUnit.MINUTE },
+                    onNudge = { applyNudge(ActiveUnit.MINUTE, it) }
+                )
+                
+                StaticText(" UTC")
             }
 
-            // Slider & Play controls row
+            Spacer(Modifier.height(20.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
             ) {
-                // Play / Pause button
                 IconButton(
-                    onClick = onTogglePlayback,
-                    colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = if (isPlaying) Color(0x334DD0E1) else Color(0x1AFFFFFF)
-                    )
+                    onClick = { isPlayingLocal = !isPlayingLocal },
+                    modifier = Modifier.size(56.dp).background(if (isPlayingLocal) Color(0x334DD0E1) else Color(0x1AFFFFFF), RoundedCornerShape(28.dp))
                 ) {
                     Icon(
-                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = "Playback Speed Controls",
-                        tint = if (isPlaying) Color(0xFF4DD0E1) else Color.White
+                        imageVector = if (isPlayingLocal) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = "Play/Pause",
+                        tint = if (isPlayingLocal) Color(0xFF4DD0E1) else Color.White,
+                        modifier = Modifier.size(32.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(16.dp))
 
-                // Left nudge
                 IconButton(
-                    onClick = { onNudge(-selectedGranularity.stepMinutes) },
-                    colors = IconButtonDefaults.iconButtonColors(containerColor = Color(0x0AFFFFFF))
+                    onClick = { isPlayingLocal = false },
+                    modifier = Modifier.size(56.dp).background(Color(0x1AFFFFFF), RoundedCornerShape(28.dp))
                 ) {
                     Icon(
-                        imageVector = Icons.Default.ArrowBackIosNew,
-                        contentDescription = "Step Back",
-                        tint = Color.White.copy(alpha = 0.85f),
-                        modifier = Modifier.size(16.dp)
+                        imageVector = Icons.Default.Stop,
+                        contentDescription = "Stop",
+                        tint = Color.White,
+                        modifier = Modifier.size(32.dp)
                     )
                 }
-
-                // Main Timeline Slider
-                Slider(
-                    value = DateRange.toFraction(currentInstant),
-                    onValueChange = { fraction ->
-                        onInstantChanged(DateRange.fromFraction(fraction))
-                    },
-                    colors = SliderDefaults.colors(
-                        thumbColor = Color(0xFF4DD0E1),
-                        activeTrackColor = Color(0xFF4DD0E1),
-                        inactiveTrackColor = Color.White.copy(alpha = 0.15f)
-                    ),
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 4.dp)
-                )
-
-                // Right nudge
-                IconButton(
-                    onClick = { onNudge(selectedGranularity.stepMinutes) },
-                    colors = IconButtonDefaults.iconButtonColors(containerColor = Color(0x0AFFFFFF))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowForwardIos,
-                        contentDescription = "Step Forward",
-                        tint = Color.White.copy(alpha = 0.85f),
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
-
-            // Year markers
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 40.dp)
-                    .offset(y = (-6).dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "1900",
-                    fontSize = 11.sp,
-                    color = Color.White.copy(alpha = 0.35f)
-                )
-                Text(
-                    text = "2050",
-                    fontSize = 11.sp,
-                    color = Color.White.copy(alpha = 0.35f)
-                )
-            }
-
-            // Granularity selection Chips Row
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    ScrubGranularity.entries.forEach { g ->
-                        val selected = g == selectedGranularity
-                        SuggestionChip(
-                            onClick = { onGranularitySelected(g) },
-                            label = {
-                                Text(
-                                    text = g.label,
-                                    fontSize = 11.sp,
-                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
-                                )
-                            },
-                            colors = SuggestionChipDefaults.suggestionChipColors(
-                                containerColor = if (selected) Color(0xFF4DD0E1) else Color(0x0AFFFFFF),
-                                labelColor = if (selected) Color(0xFF0C091A) else Color.White.copy(alpha = 0.85f)
-                            ),
-                            border = null,
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                // Now button
+                
+                Spacer(modifier = Modifier.width(32.dp))
+                
                 ElevatedButton(
-                    onClick = onResetToNow,
+                    onClick = {
+                        isPlayingLocal = false
+                        onResetToNow()
+                    },
                     colors = ButtonDefaults.elevatedButtonColors(
                         containerColor = Color(0x22FFFFB3),
                         contentColor = Color(0xFFFFB300)
                     ),
                     shape = RoundedCornerShape(14.dp),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Timeline,
                             contentDescription = "Now",
-                            modifier = Modifier.size(12.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                         Text(
                             text = "NOW",
-                            fontSize = 11.sp,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
