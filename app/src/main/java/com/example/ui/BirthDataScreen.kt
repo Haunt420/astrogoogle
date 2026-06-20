@@ -76,10 +76,21 @@ fun WorldMapSelector(
                     AndroidView(
                         modifier = Modifier.fillMaxSize(),
                         factory = { context ->
+                        
                         WebView(context).apply {
+                            layoutParams = android.view.ViewGroup.LayoutParams(
+                                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                                android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                            )
                             settings.javaScriptEnabled = true
                             settings.domStorageEnabled = true
+                            settings.useWideViewPort = true
+                            settings.loadWithOverviewMode = true
+                            settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                            
                             webViewClient = WebViewClient()
+                            webChromeClient = android.webkit.WebChromeClient()
+                            
                             addJavascriptInterface(object {
                                 @JavascriptInterface
                                 fun onLocationPicked(lat: String, lng: String) {
@@ -100,8 +111,8 @@ fun WorldMapSelector(
                                     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
                                     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
                                     <style>
-                                        body { padding: 0; margin: 0; background-color: #0F0C1B; }
-                                        html, body, #map { height: 100%; width: 100%; }
+                                        body, html { padding: 0; margin: 0; width: 100%; height: 100%; background-color: #0F0C1B; }
+                                        #map { width: 100%; height: 100%; }
                                         .leaflet-container { background: #0F0C1B; }
                                     </style>
                                 </head>
@@ -109,18 +120,15 @@ fun WorldMapSelector(
                                     <div id="map"></div>
                                     <script>
                                         var map = L.map('map').setView([20, 0], 2);
-                                        // Voyager dark theme for aesthetics
                                         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                                            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                                            attribution: '&copy; OpenStreetMap &copy; CARTO',
                                             subdomains: 'abcd',
                                             maxZoom: 20
                                         }).addTo(map);
                                         
                                         var marker = null;
                                         map.on('click', function(e) {
-                                            if(marker) {
-                                                map.removeLayer(marker);
-                                            }
+                                            if(marker) { map.removeLayer(marker); }
                                             marker = L.marker(e.latlng).addTo(map);
                                             setTimeout(function() {
                                                 AndroidInterface.onLocationPicked(e.latlng.lat.toString(), e.latlng.lng.toString());
@@ -130,8 +138,11 @@ fun WorldMapSelector(
                                 </body>
                                 </html>
                             """.trimIndent()
-                            loadDataWithBaseURL("https://example.com", html, "text/html", "UTF-8", null)
+                            
+                            val encodedHtml = android.util.Base64.encodeToString(html.toByteArray(), android.util.Base64.NO_PADDING)
+                            loadData(encodedHtml, "text/html", "base64")
                         }
+
                     })
                 }
                 

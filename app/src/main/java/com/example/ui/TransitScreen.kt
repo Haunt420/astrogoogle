@@ -242,9 +242,7 @@ fun TransitScreen(
                     .fillMaxWidth()
                     .aspectRatio(1f)
             ) {
-                TransitChartCanvas(
-                    state = state.chartState,
-                    modifier = Modifier.fillMaxSize()
+                TransitChartCanvas(state = state.chartState, birthData = state.birthData, modifier = Modifier.fillMaxSize()
                 )
 
                 if (state.isCalculating) {
@@ -285,6 +283,7 @@ fun TransitScreen(
             AspectLedger(
                 aspects = state.chartState.aspects,
                 showMinorAspects = state.showMinorAspects,
+                birthData = state.birthData,
                 onToggleMinorAspects = { viewModel.setShowMinorAspects(it) }
             )
 

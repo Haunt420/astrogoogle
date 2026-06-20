@@ -303,3 +303,90 @@ fun Instant.toJulianDay(): Double {
         hourDecimal, SweDate.SE_GREG_CAL.toDouble()
     )
 }
+
+fun Double.toInstantFromJulianDay(): Instant {
+    var Z = Math.floor(this + 0.5).toLong()
+    var F = (this + 0.5) - Z
+    
+    var A = Z
+    if (Z >= 2299161) {
+        val alpha = Math.floor((Z - 1867216.25) / 36524.25).toLong()
+        A = Z + 1 + alpha - Math.floor(alpha / 4.0).toLong()
+    }
+    
+    val B = A + 1524
+    val C = Math.floor((B - 122.1) / 365.25).toLong()
+    val D = Math.floor(365.25 * C).toLong()
+    val E = Math.floor((B - D) / 30.6001).toLong()
+    
+    val day = B - D - Math.floor(30.6001 * E).toLong()
+    val month = if (E < 14) E - 1 else E - 13
+    val year = if (month > 2) C - 4716 else C - 4715
+    
+    val hourDec = F * 24.0
+    val h = hourDec.toInt()
+    val minDec = (hourDec - h) * 60.0
+    val m = minDec.toInt()
+    val sDec = (minDec - m) * 60.0
+    val s = sDec.toInt()
+    val ns = ((sDec - s) * 1_000_000_000).toLong()
+    
+    return java.time.ZonedDateTime.of(year.toInt(), month.toInt(), day.toInt(), h, m, s, ns.toInt(), java.time.ZoneOffset.UTC).toInstant()
+}
+
+suspend fun calculateLifetimeAspects(
+    natalPosition: com.example.model.BodyPosition,
+    tBody: com.example.model.ChartBody,
+    aspectType: com.example.model.AspectType,
+    birthInstant: Instant
+): List<Instant> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+    val results = mutableListOf<Instant>()
+    val se = swisseph.SwissEph()
+    val sweBody = tBody.sweId
+    if (sweBody == null || sweBody == -1) return@withContext emptyList()
+
+    val startJd = birthInstant.toJulianDay()
+    val endJd = startJd + (85 * 365.25) // 85 years
+    
+    val stepSize = when (tBody) {
+        com.example.model.ChartBody.MOON -> 0.25
+        com.example.model.ChartBody.MERCURY, com.example.model.ChartBody.VENUS, com.example.model.ChartBody.SUN -> 1.0
+        com.example.model.ChartBody.MARS -> 2.0
+        com.example.model.ChartBody.JUPITER -> 5.0
+        else -> 10.0
+    }
+    
+    val targetLon = natalPosition.eclipticLongitude
+    val targetAspectAngle = aspectType.angle
+    val orb = 1.0 // 1 degree orb
+    
+    var jd = startJd
+    var isInsideOrb = false
+    
+    val xx = DoubleArray(6)
+    val cerr = StringBuffer()
+    
+    while(jd <= endJd) {
+        val flags = swisseph.SweConst.SEFLG_SWIEPH or swisseph.SweConst.SEFLG_SPEED
+        val ret = se.swe_calc_ut(jd, sweBody, flags, xx, cerr)
+        if (ret >= 0) {
+            val tLon = xx[0]
+            var diff = Math.abs(tLon - targetLon)
+            if (diff > 180.0) diff = 360.0 - diff
+            
+            val aspectDiff = Math.abs(diff - targetAspectAngle)
+            if (aspectDiff <= orb) {
+                 if (!isInsideOrb) {
+                     isInsideOrb = true
+                     results.add(jd.toInstantFromJulianDay())
+                 }
+            } else {
+                 isInsideOrb = false
+            }
+        }
+        jd += stepSize
+    }
+    se.swe_close()
+    
+    results
+}

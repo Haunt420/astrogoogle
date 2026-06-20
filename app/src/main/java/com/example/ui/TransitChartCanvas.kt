@@ -49,10 +49,7 @@ data class GlyphPlacement24(
 }
 
 @Composable
-fun TransitChartCanvas(
-    state: ChartState,
-    modifier: Modifier = Modifier
-) {
+fun TransitChartCanvas(state: ChartState, birthData: com.example.data.BirthData? = null, modifier: Modifier = Modifier) {
     val textMeasurer = rememberTextMeasurer()
     
     val glyphMap = mutableMapOf<ChartBody, androidx.compose.ui.graphics.ImageBitmap>()
@@ -546,7 +543,7 @@ fun TransitChartCanvas(
     }
 
     tappedAspect?.let { aspect ->
-        AspectInfoPopup(aspect = aspect, onDismiss = { tappedAspect = null })
+        AspectInfoPopup(aspect = aspect, birthData = birthData, onDismiss = { tappedAspect = null })
     }
     }
 }
@@ -555,6 +552,7 @@ fun TransitChartCanvas(
 @Composable
 fun AspectInfoPopup(
     aspect: Aspect,
+    birthData: com.example.data.BirthData? = null,
     onDismiss: () -> Unit
 ) {
     val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = false)
@@ -592,7 +590,60 @@ fun AspectInfoPopup(
             Text(nature, color = Color.White, fontSize = 15.sp, lineHeight = 22.sp)
             Spacer(Modifier.height(12.dp))
             Text(specific, color = Color(0xFF81C784), fontSize = 15.sp, lineHeight = 22.sp, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
+            
+            if (birthData != null) {
+                var occurrences by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<List<java.time.Instant>?>(null) }
+                androidx.compose.runtime.LaunchedEffect(aspect, birthData) {
+                    occurrences = com.example.engine.calculateLifetimeAspects(
+                        aspect.natalPosition,
+                        aspect.transitPosition.body,
+                        aspect.type,
+                        birthData.birthInstant
+                    )
+                }
+
+                Spacer(Modifier.height(24.dp))
+                androidx.compose.material3.HorizontalDivider(color = Color.White.copy(alpha=0.1f))
+                Spacer(Modifier.height(16.dp))
+                Text("Lifetime Occurrences (85 years)", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(8.dp))
+                
+                if (occurrences == null) {
+                    androidx.compose.material3.CircularProgressIndicator(color = Color(0xFFFFB300), modifier = Modifier.size(24.dp))
+                } else if (occurrences!!.isEmpty()) {
+                    Text("This aspect does not occur in your lifetime (very rare).", color = Color.White.copy(alpha=0.7f), fontSize = 14.sp)
+                } else {
+                    val count = occurrences!!.size
+                    val rarityStr = when {
+                        count < 3 -> "Very Rare (Once or twice a lifetime)"
+                        count < 10 -> "Rare (A few times a lifetime)"
+                        count < 30 -> "Uncommon (Every few years)"
+                        count < 100 -> "Common (Yearly)"
+                        else -> "Very Common (Monthly or more)"
+                    }
+                    Text("Frequency: $rarityStr ($count times)", color = Color(0xFF4DD0E1), fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Spacer(Modifier.height(8.dp))
+                    
+                    val now = java.time.Instant.now()
+                    val fmt = java.time.format.DateTimeFormatter.ofPattern("MMM yyyy").withZone(java.time.ZoneId.systemDefault())
+                    
+                    val past = occurrences!!.filter { it.isBefore(now) }.takeLast(3)
+                    val future = occurrences!!.filter { !it.isBefore(now) }.take(3)
+                    
+                    if (past.isNotEmpty()) {
+                        Text("Recent:", color = Color.White.copy(alpha=0.6f), fontSize = 13.sp)
+                        Text(past.joinToString(", ") { fmt.format(it) }, color = Color.White.copy(alpha=0.9f), fontSize = 14.sp)
+                        Spacer(Modifier.height(4.dp))
+                    }
+                    if (future.isNotEmpty()) {
+                        Text("Upcoming:", color = Color.White.copy(alpha=0.6f), fontSize = 13.sp)
+                        Text(future.joinToString(", ") { fmt.format(it) }, color = Color.White.copy(alpha=0.9f), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+
             Spacer(Modifier.height(32.dp))
+
         }
     }
 }

@@ -33,6 +33,7 @@ import com.example.model.AspectType
 fun AspectLedger(
     aspects: List<Aspect>,
     showMinorAspects: Boolean,
+    birthData: com.example.data.BirthData?,
     onToggleMinorAspects: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -63,7 +64,7 @@ fun AspectLedger(
             .padding(16.dp)
     ) {
         tappedAspect?.let { aspect ->
-            AspectInfoPopup(aspect = aspect, onDismiss = { tappedAspect = null })
+            AspectInfoPopup(aspect = aspect, birthData = birthData, onDismiss = { tappedAspect = null })
         }
         
         Row(
