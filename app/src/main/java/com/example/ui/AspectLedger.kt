@@ -14,6 +14,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.scale
+import androidx.compose.foundation.clickable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import com.example.model.Aspect
 import com.example.model.AspectType
 
@@ -41,6 +46,8 @@ fun AspectLedger(
         else -> minorColor
     }
 
+    var tappedAspect by remember { mutableStateOf<Aspect?>(null) }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -48,6 +55,10 @@ fun AspectLedger(
             .background(Color(0xFF110E1D), RoundedCornerShape(20.dp))
             .padding(16.dp)
     ) {
+        tappedAspect?.let { aspect ->
+            AspectInfoPopup(aspect = aspect, onDismiss = { tappedAspect = null })
+        }
+        
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -109,6 +120,7 @@ fun AspectLedger(
                             .fillMaxWidth()
                             .background(Color.White.copy(alpha = 0.02f), RoundedCornerShape(12.dp))
                             .border(1.dp, Color.White.copy(alpha = 0.03f), RoundedCornerShape(12.dp))
+                            .clickable { tappedAspect = aspect }
                             .padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween

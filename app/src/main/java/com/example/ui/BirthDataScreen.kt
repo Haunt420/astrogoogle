@@ -31,110 +31,114 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
 
+import android.annotation.SuppressLint
+import android.webkit.JavascriptInterface
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import androidx.compose.ui.viewinterop.AndroidView
+
+@SuppressLint("SetJavaScriptEnabled")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorldMapSelector(
     onLocationSelected: (lat: Double, lon: Double) -> Unit,
     onDismiss: () -> Unit
 ) {
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
-        androidx.compose.material3.Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp), color = Color(0xFF1E1B33)) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Tap Map to Set Location", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(12.dp))
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        androidx.compose.material3.Surface(
+            modifier = Modifier.fillMaxWidth(0.95f).fillMaxHeight(0.8f),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp), 
+            color = Color(0xFF1E1B33)
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Select Location", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    androidx.compose.material3.TextButton(onClick = onDismiss) {
+                        Text("Cancel", color = Color(0xFFFFB300))
+                    }
+                }
                 
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aspectRatio(2f) // Width is 2x height for equirectangular (-180 to 180, -90 to 90)
+                        .weight(1f)
                         .background(Color(0xFF0F0C1B))
-                        .pointerInput(Unit) {
-                            awaitPointerEventScope {
-                                while (true) {
-                                    val event = awaitPointerEvent()
-                                    if (event.type == androidx.compose.ui.input.pointer.PointerEventType.Press) {
-                                        val offset = event.changes.first().position
-                                        val width = size.width.toFloat()
-                                        val height = size.height.toFloat()
-                                        
-                                        val lon = (offset.x / width) * 360.0 - 180.0
-                                        val lat = 90.0 - (offset.y / height) * 180.0
-                                        
-                                        onLocationSelected(lat, lon)
+                ) {
+                    AndroidView(factory = { context ->
+                        WebView(context).apply {
+                            settings.javaScriptEnabled = true
+                            settings.domStorageEnabled = true
+                            webViewClient = WebViewClient()
+                            addJavascriptInterface(object {
+                                @JavascriptInterface
+                                fun onLocationPicked(lat: String, lng: String) {
+                                    val latitude = lat.toDoubleOrNull() ?: 0.0
+                                    val longitude = lng.toDoubleOrNull() ?: 0.0
+                                    post {
+                                        onLocationSelected(latitude, longitude)
                                         onDismiss()
                                     }
                                 }
-                            }
-                        }
-                ) {
-                    androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-                        val w = size.width
-                        val h = size.height
-                        
-                        // Draw subtle grid
-                        for (i in 1..5) {
-                            drawLine(Color.White.copy(alpha=0.1f), Offset(0f, h*i/6f), Offset(w, h*i/6f))
-                        }
-                        for (i in 1..11) {
-                            drawLine(Color.White.copy(alpha=0.1f), Offset(w*i/12f, 0f), Offset(w*i/12f, h))
-                        }
-                        
-                        // equator and prime meridian
-                        drawLine(Color.White.copy(alpha=0.3f), Offset(0f, h/2f), Offset(w, h/2f), strokeWidth = 2f)
-                        drawLine(Color.White.copy(alpha=0.3f), Offset(w/2f, 0f), Offset(w/2f, h), strokeWidth = 2f)
-
-                        // Stylized continents (Equirectangular approximations)
-                        val path = androidx.compose.ui.graphics.Path().apply {
-                            // North America
-                            moveTo(w * 0.15f, h * 0.15f)
-                            lineTo(w * 0.35f, h * 0.15f)
-                            lineTo(w * 0.28f, h * 0.45f)
-                            lineTo(w * 0.15f, h * 0.45f)
-                            close()
+                            }, "AndroidInterface")
                             
-                            // South America
-                            moveTo(w * 0.28f, h * 0.45f)
-                            lineTo(w * 0.35f, h * 0.45f)
-                            lineTo(w * 0.30f, h * 0.85f)
-                            lineTo(w * 0.26f, h * 0.85f)
-                            close()
-
-                            // Eurasia
-                            moveTo(w * 0.42f, h * 0.15f)
-                            lineTo(w * 0.90f, h * 0.15f)
-                            lineTo(w * 0.85f, h * 0.45f)
-                            lineTo(w * 0.42f, h * 0.45f)
-                            close()
-                            
-                            // Africa
-                            moveTo(w * 0.42f, h * 0.45f)
-                            lineTo(w * 0.60f, h * 0.45f)
-                            lineTo(w * 0.55f, h * 0.75f)
-                            lineTo(w * 0.48f, h * 0.75f)
-                            close()
-                            
-                            // Australia
-                            moveTo(w * 0.75f, h * 0.65f)
-                            lineTo(w * 0.85f, h * 0.65f)
-                            lineTo(w * 0.85f, h * 0.80f)
-                            lineTo(w * 0.75f, h * 0.80f)
-                            close()
+                            val html = """
+                                <!DOCTYPE html>
+                                <html>
+                                <head>
+                                    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+                                    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+                                    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+                                    <style>
+                                        body { padding: 0; margin: 0; background-color: #0F0C1B; }
+                                        html, body, #map { height: 100%; width: 100%; }
+                                        .leaflet-container { background: #0F0C1B; }
+                                    </style>
+                                </head>
+                                <body>
+                                    <div id="map"></div>
+                                    <script>
+                                        var map = L.map('map').setView([20, 0], 2);
+                                        // Voyager dark theme for aesthetics
+                                        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                                            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                                            subdomains: 'abcd',
+                                            maxZoom: 20
+                                        }).addTo(map);
+                                        
+                                        var marker = null;
+                                        map.on('click', function(e) {
+                                            if(marker) {
+                                                map.removeLayer(marker);
+                                            }
+                                            marker = L.marker(e.latlng).addTo(map);
+                                            setTimeout(function() {
+                                                AndroidInterface.onLocationPicked(e.latlng.lat.toString(), e.latlng.lng.toString());
+                                            }, 500);
+                                        });
+                                    </script>
+                                </body>
+                                </html>
+                            """.trimIndent()
+                            loadDataWithBaseURL("https://example.com", html, "text/html", "UTF-8", null)
                         }
-                        
-                        drawPath(path, Color(0xFF4DD0E1).copy(alpha = 0.3f), style = androidx.compose.ui.graphics.drawscope.Fill)
-                    }
+                    })
                 }
                 
                 Text(
-                    text = "Equator is middle line. Center is Prime Meridian/London.",
+                    text = "Tap on the map to accurately drop a pin and set location.",
                     color = Color.White.copy(alpha = 0.5f),
-                    fontSize = 11.sp,
-                    modifier = Modifier.padding(top = 8.dp)
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(16.dp)
                 )
-                
-                androidx.compose.material3.TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
-                    Text("Cancel", color = Color(0xFFFFB300))
-                }
             }
         }
     }
