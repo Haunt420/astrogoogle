@@ -73,7 +73,9 @@ fun WorldMapSelector(
                         .weight(1f)
                         .background(Color(0xFF0F0C1B))
                 ) {
-                    AndroidView(factory = { context ->
+                    AndroidView(
+                        modifier = Modifier.fillMaxSize(),
+                        factory = { context ->
                         WebView(context).apply {
                             settings.javaScriptEnabled = true
                             settings.domStorageEnabled = true

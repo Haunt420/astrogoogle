@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.border
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.ui.input.pointer.pointerInput
@@ -540,14 +541,19 @@ fun TransitChartCanvas(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AspectInfoPopup(
     aspect: Aspect,
     onDismiss: () -> Unit
 ) {
-    androidx.compose.ui.window.Popup(
-        alignment = Alignment.Center,
-        onDismissRequest = onDismiss
+    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = false)
+
+    androidx.compose.material3.ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = Color(0xFF1E1B33),
+        contentColor = Color.White
     ) {
         val title = "Transit ${aspect.transitPosition.body.displayName} ${aspect.type.name.lowercase().replaceFirstChar { it.uppercase() }} Natal ${aspect.natalPosition.body.displayName}"
         val strengthP = (aspect.strength * 100).toInt()
@@ -564,26 +570,19 @@ fun AspectInfoPopup(
         
         val specific = getSpecificAspectText(aspect.transitPosition.body, aspect.natalPosition.body)
 
-        Box(
+        Column(
             modifier = Modifier
+                .fillMaxWidth()
                 .padding(24.dp)
-                .fillMaxWidth(0.85f)
-                .background(Color(0xFF1E1B33).copy(alpha = 0.95f), RoundedCornerShape(16.dp))
-                .border(1.dp, Color(0xFF4DD0E1).copy(alpha = 0.5f), RoundedCornerShape(16.dp))
-                .padding(16.dp)
-                .pointerInput(Unit) {
-                    detectTapGestures { _: Offset -> onDismiss() }
-                }
         ) {
-            Column {
-                Text(title, color = Color(0xFFFFB300), fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(4.dp))
-                Text("Orb: $orb  (Strength: $strengthP%)", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
-                Spacer(Modifier.height(8.dp))
-                Text(nature, color = Color.White, fontSize = 13.sp, lineHeight = 18.sp)
-                Spacer(Modifier.height(8.dp))
-                Text(specific, color = Color(0xFF81C784), fontSize = 13.sp, lineHeight = 18.sp, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
-            }
+            Text(title, color = Color(0xFFFFB300), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            Text("Orb: $orb  (Strength: $strengthP%)", color = Color.White.copy(alpha = 0.6f), fontSize = 14.sp)
+            Spacer(Modifier.height(16.dp))
+            Text(nature, color = Color.White, fontSize = 15.sp, lineHeight = 22.sp)
+            Spacer(Modifier.height(12.dp))
+            Text(specific, color = Color(0xFF81C784), fontSize = 15.sp, lineHeight = 22.sp, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
+            Spacer(Modifier.height(32.dp))
         }
     }
 }
